@@ -1,0 +1,98 @@
+[
+  {
+    "id": "code_01",
+    "prompt": "Write a Python function `validate_email(email: str) -> bool` that validates an email address. Return True if the email is valid, False otherwise. A valid email must contain exactly one @, have a valid domain part (at least one dot with TLD of 2+ chars), and have a non-empty local part before the @.",
+    "type": "code",
+    "expected": "def validate_email"
+  },
+  {
+    "id": "code_02",
+    "prompt": "Write a Python function `weighted_average(values: list[float], weights: list[float]) -> float` that computes the weighted average of a list of values given corresponding weights. Return 0.0 if the sum of weights is zero. Raise ValueError if values and weights have different lengths.",
+    "type": "code",
+    "expected": "def weighted_average"
+  },
+  {
+    "id": "code_03",
+    "prompt": "Write a Python function `deep_merge(base: dict, override: dict) -> dict` that recursively merges two dictionaries. Values from `override` take precedence. If both values are dicts, merge recursively. Otherwise, override wins. Return a new dict (do not mutate inputs).",
+    "type": "code",
+    "expected": "def deep_merge"
+  },
+  {
+    "id": "code_04",
+    "prompt": "Write a Python function `parse_log_line(line: str) -> dict` that parses a log line in the format: `YYYY-MM-DD HH:MM:SS [LEVEL] message`. Return a dict with keys: date (str), time (str), level (str), message (str). Return None if the line doesn't match the format.",
+    "type": "code",
+    "expected": "def parse_log_line"
+  },
+  {
+    "id": "code_05",
+    "prompt": "Write a Python class `LRUCache` with capacity `n`. It should support `get(key)` and `put(key, value)` operations in O(1) time. `get` returns the value if key exists (else -1) and marks it as recently used. `put` inserts or updates a key-value pair, evicting the least recently used item if at capacity.",
+    "type": "code",
+    "expected": "class LRUCache"
+  },
+  {
+    "id": "code_06",
+    "prompt": "Write a Python class `User` with fields: name (str), email (str), age (int). The constructor should validate: name is non-empty, email contains @, age is between 0 and 150. Add a `is_adult()` method that returns True if age >= 18. Add `__repr__` method.",
+    "type": "code",
+    "expected": "class User"
+  },
+  {
+    "id": "code_07",
+    "prompt": "Write an async Python function `fetch_with_retry(url: str, max_retries: int = 3, backoff: float = 1.0) -> str` that fetches a URL using httpx.AsyncClient. Retry up to max_retries times with exponential backoff (backoff * 2^attempt). Return the response text on success. Raise RuntimeError after all retries exhausted.",
+    "type": "code",
+    "expected": "async def fetch_with_retry"
+  },
+  {
+    "id": "code_08",
+    "prompt": "Write a Python class `Publisher` that implements the observer pattern. It should support `subscribe(observer)` and `unsubscribe(observer)` methods, and a `notify(message: str)` method that calls `observer.update(message)` on all subscribers. Observers are stored in a list. Notify should not crash if an observer raises an exception.",
+    "type": "code",
+    "expected": "class Publisher"
+  },
+  {
+    "id": "code_09",
+    "prompt": "Write a Python function `flatten_nested(data)` that flattens arbitrarily nested lists and dicts into a single flat list of leaf values. For dicts, only values are included (not keys). Lists are recursively flattened. Non-iterable values (strings, numbers, None) are kept as-is. Return a flat list.",
+    "type": "code",
+    "expected": "def flatten_nested"
+  },
+  {
+    "id": "qa_01",
+    "prompt": "What is the output of this Python code?\n\n```\ndef make_counter():\n    count = [0]\n    def counter():\n        count[0] += 1\n        return count[0]\n    return counter\n\nc1 = make_counter()\nc2 = make_counter()\nprint(c1(), c1(), c2())\n```\n\nProvide only the output.",
+    "type": "qa",
+    "expected": "1 2 1"
+  },
+  {
+    "id": "qa_02",
+    "prompt": "What is the output of this Python code?\n\n```\ndata = {'a': 1, 'b': 2, 'c': 3}\nresult = {}\nfor key in data:\n    if data[key] > 1:\n        result[key] = data[key] * 2\nprint(result)\n```\n\nProvide only the output.",
+    "type": "qa",
+    "expected": "{'b': 4, 'c': 6}"
+  },
+  {
+    "id": "qa_03",
+    "prompt": "Identify the bug in this Python function:\n\n```\ndef find_max(lst):\n    max_val = lst[0]\n    for i in range(1, len(lst)):\n        if lst[i] > max_val:\n            max_val = lst[i]\n    return max_val\n```\n\nWhat happens when called with an empty list? Describe the bug and the error that occurs.",
+    "type": "qa",
+    "expected": "IndexError"
+  },
+  {
+    "id": "qa_04",
+    "prompt": "What is the time complexity (Big O) of this function?\n\n```\ndef find_duplicates(arr):\n    seen = set()\n    duplicates = set()\n    for item in arr:\n        if item in seen:\n            duplicates.add(item)\n        else:\n            seen.add(item)\n    return list(duplicates)\n```\n\nExplain your reasoning in 2-3 sentences.",
+    "type": "qa",
+    "expected": "O(n)"
+  },
+  {
+    "id": "reasoning_01",
+    "prompt": "Refactor this imperative Python code into a more functional style. Keep the same behavior but use list comprehensions, map/filter, or functional patterns where appropriate:\n\n```\ndef process_numbers(numbers):\n    result = []\n    for n in numbers:\n        if n > 0:\n            squared = n * n\n            if squared % 2 == 0:\n                result.append(squared)\n    return result\n```\n\nProvide the refactored code.",
+    "type": "reasoning",
+    "expected": "result = [n * n for n in numbers if n > 0 and (n * n) % 2 == 0]"
+  },
+  {
+    "id": "reasoning_02",
+    "prompt": "Debug this Python function. It's supposed to calculate the factorial of a non-negative integer, but it has a bug:\n\n```\ndef factorial(n):\n    if n == 0:\n        return 1\n    return n * factorial(n - 1)\n```\n\nWhat is the bug? What happens when called with factorial(-1)? Provide the fix.",
+    "type": "reasoning",
+    "expected": "RecursionError"
+  },
+  {
+    "id": "reasoning_03",
+    "prompt": "Write a Python function `data_pipeline(records: list[dict]) -> dict` that:\n1. Filters records where 'score' > 50\n2. Groups remaining records by 'category'\n3. For each category, computes the average score\n4. Returns a dict mapping category -> average score (rounded to 2 decimals)\n\nExample input: [{'category': 'A', 'score': 60}, {'category': 'B', 'score': 40}, {'category': 'A', 'score': 80}]\nExpected output: {'A': 70.0}\n\nProvide the complete function.",
+    "type": "reasoning",
+    "expected": "def data_pipeline"
+  }
+]

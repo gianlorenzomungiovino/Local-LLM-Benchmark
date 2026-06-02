@@ -41,3 +41,5 @@ vendor/
 coverage/
 .cache/
 tmp/
+results/
+
