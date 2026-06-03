@@ -128,6 +128,27 @@ class LLMClient:
         """Close the underlying HTTP client."""
         await self._client.aclose()
 
+    async def fetch_model_info(self) -> str | None:
+        """Query the llama.cpp server's /v1/models endpoint and return the first model ID.
+
+        Returns:
+            The first model's `id` string, or None if no models found or on error.
+        """
+        try:
+            response = await self._client.get(f"{self.base_url}/v1/models")
+            response.raise_for_status()
+            data = response.json()
+            models = data.get("data", [])
+            if models:
+                model_id = models[0].get("id")
+                _logger.info("Auto-detected model: %s", model_id)
+                return model_id
+            _logger.debug("No models returned by /v1/models")
+            return None
+        except httpx.HTTPError as exc:
+            _logger.warning("Failed to fetch model info: %s", exc)
+            return None
+
     # ── internals ─────────────────────────────────────────────────
 
     def _build_payload(self, system_prompt: str, user_prompt: str) -> dict:

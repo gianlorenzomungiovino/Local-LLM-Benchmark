@@ -310,3 +310,78 @@ class TestRetryLogic:
             await client.close()
 
             mock_client.aclose.assert_called_once()
+
+
+# ── tests: fetch_model_info ──────────────────────────────────────
+
+class TestFetchModelInfo:
+    """Verify fetch_model_info() queries /v1/models and returns the first model ID or None."""
+
+    @pytest.mark.asyncio
+    async def test_fetch_model_info_returns_first_model_id(self, _no_file_logger):
+        """Mock 200 response with data array — verify first id is returned."""
+        with patch("llm_client.httpx.AsyncClient") as MockClient:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=_make_response(200, {
+                    "object": "list",
+                    "data": [
+                        {"id": "llama-3-8b", "object": "model"},
+                        {"id": "llama-3-70b", "object": "model"},
+                    ],
+                })
+            )
+            MockClient.return_value = mock_client
+
+            from llm_client import LLMClient
+            client = LLMClient("http://localhost:8080")
+            result = await client.fetch_model_info()
+
+            assert result == "llama-3-8b"
+            mock_client.get.assert_called_once_with("http://localhost:8080/v1/models")
+
+    @pytest.mark.asyncio
+    async def test_fetch_model_info_empty_data_returns_none(self, _no_file_logger):
+        """Mock 200 with empty data array — verify None returned."""
+        with patch("llm_client.httpx.AsyncClient") as MockClient:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=_make_response(200, {"object": "list", "data": []})
+            )
+            MockClient.return_value = mock_client
+
+            from llm_client import LLMClient
+            client = LLMClient("http://localhost:8080")
+            result = await client.fetch_model_info()
+
+            assert result is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_model_info_http_error_returns_none(self, _no_file_logger):
+        """Mock connection error — verify None returned (no exception raised)."""
+        with patch("llm_client.httpx.AsyncClient") as MockClient:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
+            MockClient.return_value = mock_client
+
+            from llm_client import LLMClient
+            client = LLMClient("http://localhost:8080")
+            result = await client.fetch_model_info()
+
+            assert result is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_model_info_missing_data_key_returns_none(self, _no_file_logger):
+        """Mock response without 'data' key — verify None returned."""
+        with patch("llm_client.httpx.AsyncClient") as MockClient:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=_make_response(200, {"object": "list"})
+            )
+            MockClient.return_value = mock_client
+
+            from llm_client import LLMClient
+            client = LLMClient("http://localhost:8080")
+            result = await client.fetch_model_info()
+
+            assert result is None
