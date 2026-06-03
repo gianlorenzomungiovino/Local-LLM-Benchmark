@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from llm_client import LLMClient
+from evaluator import score_results
 
 # Paths relative to this file's parent (project root)
 _PROJECT_ROOT = Path(__file__).resolve().parent
@@ -60,6 +61,9 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
             await client.close()
 
     asyncio.run(_execute())
+
+    # Score results before writing
+    score_results(results, tasks)
 
     # Write results
     _RESULTS_DIR.mkdir(parents=True, exist_ok=True)

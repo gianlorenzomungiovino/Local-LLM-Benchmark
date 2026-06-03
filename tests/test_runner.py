@@ -99,6 +99,7 @@ class TestTaskIteration:
         """When limit is set, only the first N tasks are processed."""
         config_path = _write_temp_config(tmp_path)
         results_dir = tmp_path / "results"
+        results_path = results_dir / "results.json"
 
         with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
              patch.object(runner, "_load_tasks", return_value=[
@@ -107,7 +108,8 @@ class TestTaskIteration:
                  {"id": 3, "type": "reasoning", "system_prompt": "s", "user_prompt": "u"},
              ]), \
              patch("runner.LLMClient") as MockClient, \
-             patch.object(runner, "_RESULTS_DIR", results_dir):
+             patch.object(runner, "_RESULTS_DIR", results_dir), \
+             patch.object(runner, "_RESULTS_PATH", results_path):
 
             mock_client = _make_mock_client()
             MockClient.return_value = mock_client
@@ -125,6 +127,7 @@ class TestTaskIteration:
         """Without limit, all tasks are processed."""
         config_path = _write_temp_config(tmp_path)
         results_dir = tmp_path / "results"
+        results_path = results_dir / "results.json"
 
         with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
              patch.object(runner, "_load_tasks", return_value=[
@@ -132,7 +135,8 @@ class TestTaskIteration:
                  for i in range(5)
              ]), \
              patch("runner.LLMClient") as MockClient, \
-             patch.object(runner, "_RESULTS_DIR", results_dir):
+             patch.object(runner, "_RESULTS_DIR", results_dir), \
+             patch.object(runner, "_RESULTS_PATH", results_path):
 
             mock_client = _make_mock_client()
             MockClient.return_value = mock_client
@@ -185,13 +189,15 @@ class TestResultsWriting:
         """Each result entry has all required fields."""
         config_path = _write_temp_config(tmp_path)
         results_dir = tmp_path / "results"
+        results_path = results_dir / "results.json"
 
         with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
              patch.object(runner, "_load_tasks", return_value=[
                  {"id": 42, "type": "qa", "system_prompt": "sys", "user_prompt": "usr"},
              ]), \
              patch("runner.LLMClient") as MockClient, \
-             patch.object(runner, "_RESULTS_DIR", results_dir):
+             patch.object(runner, "_RESULTS_DIR", results_dir), \
+             patch.object(runner, "_RESULTS_PATH", results_path):
 
             mock_client = _make_mock_client()
             MockClient.return_value = mock_client
@@ -207,8 +213,45 @@ class TestResultsWriting:
             assert entry["task_type"] == "qa"
             assert entry["prompt"] == "usr"
             assert entry["response"] == "mocked response"
-            assert entry["score"] is None
+            assert entry["score"] is not None
             assert "timestamp" in entry
+
+    def test_results_have_scores_populated(self, tmp_path):
+        """All result entries have score populated (not None) and within [0.0, 1.0]."""
+        config_path = _write_temp_config(tmp_path)
+        results_dir = tmp_path / "results"
+        results_path = results_dir / "results.json"
+
+        with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
+             patch.object(runner, "_load_tasks", return_value=[
+                 {"id": 1, "type": "qa", "system_prompt": "s", "user_prompt": "u", "expected_keywords": ["hello"]},
+                 {"id": 2, "type": "code", "system_prompt": "s", "user_prompt": "u", "expected_keywords": ["def"]},
+                 {"id": 3, "type": "reasoning", "system_prompt": "s", "user_prompt": "u", "expected_keywords": []},
+             ]), \
+             patch("runner.LLMClient") as MockClient, \
+             patch.object(runner, "_RESULTS_DIR", results_dir), \
+             patch.object(runner, "_RESULTS_PATH", results_path):
+
+            mock_client = _make_mock_client()
+            MockClient.return_value = mock_client
+
+            results = runner.run_benchmark(
+                config_path=str(config_path),
+                server_url="http://localhost:8080",
+            )
+
+            # All entries must have score populated
+            for entry in results:
+                assert entry["score"] is not None, f"score is None for task {entry['task_id']}"
+                assert isinstance(entry["score"], float), f"score is not a float for task {entry['task_id']}"
+                assert 0.0 <= entry["score"] <= 1.0, f"score out of range for task {entry['task_id']}: {entry['score']}"
+
+            # Verify written file also has scores
+            data = json.loads(results_path.read_text())
+            for entry in data:
+                assert entry["score"] is not None
+                assert isinstance(entry["score"], float)
+                assert 0.0 <= entry["score"] <= 1.0
 
     def test_results_json_is_array_not_append(self, tmp_path):
         """Results are written as a complete JSON array, not appended."""
@@ -249,13 +292,15 @@ class TestResultsWriting:
         """run_benchmark returns the list of result dicts."""
         config_path = _write_temp_config(tmp_path)
         results_dir = tmp_path / "results"
+        results_path = results_dir / "results.json"
 
         with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
              patch.object(runner, "_load_tasks", return_value=[
                  {"id": 1, "type": "code", "system_prompt": "s", "user_prompt": "u"},
              ]), \
              patch("runner.LLMClient") as MockClient, \
-             patch.object(runner, "_RESULTS_DIR", results_dir):
+             patch.object(runner, "_RESULTS_DIR", results_dir), \
+             patch.object(runner, "_RESULTS_PATH", results_path):
 
             mock_client = _make_mock_client()
             MockClient.return_value = mock_client

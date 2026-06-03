@@ -32,6 +32,12 @@ def main() -> None:
         default="configs/run.json",
         help="Path to server config JSON (default: configs/run.json)",
     )
+    parser.add_argument(
+        "--report",
+        action="store_true",
+        default=False,
+        help="Generate markdown report after benchmark run",
+    )
     args = parser.parse_args()
 
     server_url = args.server or "http://localhost:8080"
@@ -48,6 +54,13 @@ def main() -> None:
     )
 
     print(f"Ran {len(results)} tasks.", file=sys.stderr)
+
+    if args.report:
+        from report import generate_report_from_file
+
+        generate_report_from_file()
+        print("Report written to results/results.md", file=sys.stderr)
+
     sys.exit(0)
 
 
