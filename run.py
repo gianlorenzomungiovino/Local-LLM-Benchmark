@@ -2,6 +2,7 @@
 """CLI entrypoint — run the LLM benchmark against a llama.cpp server."""
 
 import argparse
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -11,12 +12,77 @@ from runner import run_benchmark
 _PROJECT_ROOT = Path(__file__).resolve().parent
 
 
-def _print_banner(task_count: int, config: dict, server_url: str, limit: int | None) -> None:
-    """Print a startup banner with config and task info to stderr."""
+def detect_and_populate_config(
+    config_path: str, server_url: str,
+) -> tuple[dict, str | None]:
+    """Auto-detect the loaded model from the llama.cpp server and update config.
+
+    If config['model'] is already set (not None), returns config unchanged.
+    Otherwise queries /v1/models, updates config['model'] on success, and
+    writes the updated config back to disk.
+
+    Args:
+        config_path: Path to the JSON config file.
+        server_url: llama.cpp server URL, e.g. 'http://localhost:8080'.
+
+    Returns:
+        Tuple of (config dict, detected_model_name or None).
+    """
+    # Load config
+    config_file = Path(config_path)
+    if not config_file.is_absolute():
+        config_file = _PROJECT_ROOT / config_file
+    with open(config_file, "r", encoding="utf-8") as f:
+        config = json.load(f)
+
+    # Skip detection if model is already set
+    if config.get("model") is not None:
+        return config, None
+
+    # Query server for model info
+    try:
+        from llm_client import LLMClient
+
+        client = LLMClient(server_url)
+        detected_model = asyncio.run(client.fetch_model_info())
+        if detected_model:
+            config["model"] = detected_model
+            # Write updated config back to disk
+            with open(config_file, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4)
+            return config, detected_model
+        return config, None
+    except Exception as exc:
+        # Detection failed — return config unchanged
+        print(
+            f"  [warn] Model detection failed: {exc}",
+            file=sys.stderr,
+        )
+        return config, None
+
+
+def _print_banner(
+    task_count: int,
+    config: dict,
+    server_url: str,
+    limit: int | None,
+    detected_model: str | None = None,
+) -> None:
+    """Print a startup banner with config and task info to stderr.
+
+    Args:
+        task_count: Number of tasks to run.
+        config: Configuration dict.
+        server_url: llama.cpp server URL.
+        limit: Optional task limit.
+        detected_model: Auto-detected model name (optional).
+    """
     sep = "=" * 55
     print("\n" + sep, file=sys.stderr)
     print("  LLM Benchmark — Starting", file=sys.stderr)
     print(sep, file=sys.stderr)
+    if detected_model:
+        print(f"  Model: {detected_model}", file=sys.stderr)
     if limit:
         print(f"  Tasks: {task_count} (limited to {limit})", file=sys.stderr)
     else:
@@ -65,9 +131,8 @@ def main() -> None:
     if not Path(config_path).is_absolute():
         config_path = str(_PROJECT_ROOT / config_path)
 
-    # Load config to know task count and params before running
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
+    # Load config, auto-detect model if not set
+    config, detected_model = detect_and_populate_config(config_path, server_url)
 
     # Load tasks to count them
     tasks_path = _PROJECT_ROOT / "tasks" / "tasks.json"
@@ -77,8 +142,8 @@ def main() -> None:
     if args.limit is not None:
         task_count = min(args.limit, len(tasks))
 
-    # Print startup banner
-    _print_banner(task_count, config, server_url, args.limit)
+    # Print startup banner (with detected model if available)
+    _print_banner(task_count, config, server_url, args.limit, detected_model)
 
     results = run_benchmark(
         config_path=config_path,
