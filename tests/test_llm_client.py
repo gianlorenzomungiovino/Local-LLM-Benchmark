@@ -337,7 +337,7 @@ class TestFetchModelInfo:
             client = LLMClient("http://localhost:8080")
             result = await client.fetch_model_info()
 
-            assert result == "llama-3-8b"
+            assert isinstance(result, dict) and result["id"] == "llama-3-8b"
             mock_client.get.assert_called_once_with("http://localhost:8080/v1/models")
 
     @pytest.mark.asyncio

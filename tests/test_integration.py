@@ -642,7 +642,7 @@ def test_detect_and_populate_config_updates_file(monkeypatch, tmp_path):
 
     # Mock LLMClient.fetch_model_info to return a model ID
     mock_client = MagicMock()
-    mock_client.fetch_model_info = AsyncMock(return_value="llama-3-8b-instruct")
+    mock_client.fetch_model_info = AsyncMock(return_value={"id": "llama-3-8b-instruct", "n_ctx": 4096, "n_ctx_train": None, "n_embd": None, "n_params": None, "n_vocab": None, "size": None})
 
     with patch("llm_client.LLMClient", return_value=mock_client):
         result_config, detected = detect_and_populate_config(
@@ -651,7 +651,7 @@ def test_detect_and_populate_config_updates_file(monkeypatch, tmp_path):
 
     # Verify: config was updated with detected model
     assert result_config["model"] == "llama-3-8b-instruct"
-    assert detected == "llama-3-8b-instruct"
+    assert isinstance(detected, dict) and detected["id"] == "llama-3-8b-instruct"
 
     # Verify: config file on disk was updated
     disk_config = json.loads(config_path.read_text(encoding="utf-8"))

@@ -14,19 +14,20 @@ _PROJECT_ROOT = Path(__file__).resolve().parent
 
 def detect_and_populate_config(
     config_path: str, server_url: str,
-) -> tuple[dict, str | None]:
-    """Auto-detect the loaded model from the llama.cpp server and update config.
+) -> tuple[dict, dict | None]:
+    """Auto-detect model and server metadata from the llama.cpp server.
 
     If config['model'] is already set (not None), returns config unchanged.
-    Otherwise queries /v1/models, updates config['model'] on success, and
-    writes the updated config back to disk.
+    Otherwise queries /v1/models, updates config with model name and n_ctx,
+    and writes the updated config back to disk.
 
     Args:
         config_path: Path to the JSON config file.
         server_url: llama.cpp server URL, e.g. 'http://localhost:8080'.
 
     Returns:
-        Tuple of (config dict, detected_model_name or None).
+        Tuple of (config dict, detected metadata dict or None).
+        Metadata includes: id, n_ctx, n_ctx_train, n_embd, n_params, n_vocab, size.
     """
     # Load config
     config_file = Path(config_path)
@@ -44,13 +45,16 @@ def detect_and_populate_config(
         from llm_client import LLMClient
 
         client = LLMClient(server_url)
-        detected_model = asyncio.run(client.fetch_model_info())
-        if detected_model:
-            config["model"] = detected_model
+        model_info = asyncio.run(client.fetch_model_info())
+        if model_info:
+            config["model"] = model_info["id"]
+            # Auto-set n_ctx from server if not already set
+            if "n_ctx" not in config and model_info.get("n_ctx"):
+                config["n_ctx"] = model_info["n_ctx"]
             # Write updated config back to disk
             with open(config_file, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=4)
-            return config, detected_model
+            return config, model_info
         return config, None
     except Exception as exc:
         # Detection failed — return config unchanged
@@ -132,7 +136,7 @@ def main() -> None:
         config_path = str(_PROJECT_ROOT / config_path)
 
     # Load config, auto-detect model if not set
-    config, detected_model = detect_and_populate_config(config_path, server_url)
+    config, model_info = detect_and_populate_config(config_path, server_url)
 
     # Load tasks to count them
     tasks_path = _PROJECT_ROOT / "tasks" / "tasks.json"
@@ -143,7 +147,7 @@ def main() -> None:
         task_count = min(args.limit, len(tasks))
 
     # Print startup banner (with detected model if available)
-    _print_banner(task_count, config, server_url, args.limit, detected_model)
+    _print_banner(task_count, config, server_url, args.limit, model_info)
 
     results = run_benchmark(
         config_path=config_path,

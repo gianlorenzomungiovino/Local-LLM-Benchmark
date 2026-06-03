@@ -65,19 +65,19 @@ def test_code_scoring_with_keywords():
     score_result(result, task)
     # Structural: def (1), type_hint (1), docstring (1) = 3
     # Keywords: "reverse" found, "linked" found, "list" found = 3
-    # score = (3 + 3) / (3 + 3) = 1.0
-    assert result["score"] == 1.0
+    # score = (2 + 3) / (3 + 3) = 0.8333
+    assert result["score"] == round(5 / 6, 4)
     assert "reverse" in result["matched_keywords"]
     assert "linked" in result["matched_keywords"]
     assert "list" in result["matched_keywords"]
 
 
 def test_code_scoring_no_keywords():
-    """Code task without keywords returns 0.5."""
+    """Code task without keywords scores on structural elements only."""
     result = {"response": "def foo():\n    pass"}
     task = {"type": "code", "expected_keywords": []}
     score_result(result, task)
-    assert result["score"] == 0.5
+    assert result["score"] == round(1 / 3, 4)
     assert result["matched_keywords"] == []
 
 
@@ -88,8 +88,8 @@ def test_code_scoring_structural_only():
     score_result(result, task)
     # Structural: def (1), type_hint (1), docstring (1) = 3
     # Keywords: 0 matches
-    # score = 3 / (1 + 3) = 0.75
-    assert result["score"] == 0.75
+    # score = 2 / (1 + 3) = 0.5
+    assert result["score"] == 0.5
 
 
 def test_code_scoring_no_structure_no_keywords():
@@ -223,8 +223,8 @@ def test_score_results_mixed_types():
         {"id": 3, "type": "reasoning", "expected_keywords": ["no", "not necessarily"]},
     ]
     score_results(results, tasks)
-    # Code with no keywords → 0.5
-    assert results[0]["score"] == 0.5
+    # Code with no keywords → structural (def only = 1/3)
+    assert results[0]["score"] == round(1 / 3, 4)
     # QA with keyword match → 1.0
     assert results[1]["score"] == 1.0
     # Reasoning with both keywords → 1.0

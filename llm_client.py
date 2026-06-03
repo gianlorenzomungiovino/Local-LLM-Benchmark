@@ -26,6 +26,8 @@ class LLMClient:
     """Async-compatible HTTP client for llama.cpp /v1/chat/completions."""
 
     # llama.cpp OpenAI-compatible parameter mapping
+    # llama.cpp OpenAI-compatible API parameter mapping
+    # All sampling parameters accepted by the server
     _PARAM_MAP = {
         "temperature": "temperature",
         "top_k": "top_k",
@@ -33,6 +35,17 @@ class LLMClient:
         "min_p": "min_p",
         "repeat_penalty": "repeat_penalty",
         "presence_penalty": "presence_penalty",
+        "frequency_penalty": "frequency_penalty",
+        "mirostat": "mirostat",
+        "mirostat_tau": "mirostat_tau",
+        "mirostat_eta": "mirostat_eta",
+        "typical_p": "typical_p",
+        "penalty_last_n": "penalty_last_n",
+        "tfs_z": "tfs_z",
+        "num_keep": "num_keep",
+        "seed": "seed",
+        "n_predict": "n_predict",
+        "logit_bias": "logit_bias",
     }
 
     def __init__(self, base_url: str, **params):
@@ -128,11 +141,12 @@ class LLMClient:
         """Close the underlying HTTP client."""
         await self._client.aclose()
 
-    async def fetch_model_info(self) -> str | None:
-        """Query the llama.cpp server's /v1/models endpoint and return the first model ID.
+    async def fetch_model_info(self) -> dict | None:
+        """Query the llama.cpp server's /v1/models endpoint and return full model metadata.
 
         Returns:
-            The first model's `id` string, or None if no models found or on error.
+            Dict with model metadata (id, n_ctx, n_params, n_vocab, etc.),
+            or None if no models found or on error.
         """
         try:
             response = await self._client.get(f"{self.base_url}/v1/models")
@@ -140,9 +154,19 @@ class LLMClient:
             data = response.json()
             models = data.get("data", [])
             if models:
-                model_id = models[0].get("id")
-                _logger.info("Auto-detected model: %s", model_id)
-                return model_id
+                meta = models[0].get("meta", {})
+                info = {
+                    "id": models[0].get("id"),
+                    "n_ctx": meta.get("n_ctx"),
+                    "n_ctx_train": meta.get("n_ctx_train"),
+                    "n_embd": meta.get("n_embd"),
+                    "n_params": meta.get("n_params"),
+                    "n_vocab": meta.get("n_vocab"),
+                    "size": meta.get("size"),
+                }
+                _logger.info("Auto-detected model: %s (ctx=%s, params=%s)",
+                           info["id"], info["n_ctx"], info["n_params"])
+                return info
             _logger.debug("No models returned by /v1/models")
             return None
         except httpx.HTTPError as exc:

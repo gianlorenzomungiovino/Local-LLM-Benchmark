@@ -32,17 +32,11 @@ def score_result(result: dict[str, Any], task: dict[str, Any]) -> dict[str, Any]
 
     matched_keywords: list[str] = []
 
-    if not expected_keywords:
-        # Neutral default when no keywords are specified
-        result["score"] = 0.5
-        result["matched_keywords"] = []
-        return result
-
     if task_type == "code":
         # Structural elements to check
         structural_checks = [
             ("def ", "def "),
-            ("type_hint", r":\s"),
+            ("type_hint", r":[ \t]+\w"),
             ("docstring", '"""'),
         ]
         structural_matches = 0
@@ -60,6 +54,12 @@ def score_result(result: dict[str, Any], task: dict[str, Any]) -> dict[str, Any]
         total_denominator = len(expected_keywords) + 3
         result["score"] = round((structural_matches + keyword_matches) / total_denominator, 4)
         result["matched_keywords"] = matched_keywords
+        return result
+
+    if not expected_keywords:
+        # Neutral default for non-code tasks when no keywords are specified
+        result["score"] = 0.5
+        result["matched_keywords"] = []
         return result
 
     # qa or reasoning: case-insensitive substring match
