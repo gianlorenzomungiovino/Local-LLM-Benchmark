@@ -11,12 +11,13 @@ def score_result(result: dict[str, Any], task: dict[str, Any]) -> dict[str, Any]
 
     Scoring rules:
     - **code** tasks: check for structural elements (``def ``, type hints
-      ``:`` with space, docstrings using triple-quotes, and any
-      expected_keywords).  Score = structural_matches / (len(expected_keywords)
-      + 3) if keywords exist, else 0.5.
+      with real types, docstrings with content, return statements, and any
+      expected_keywords).  Score = (structural_matches + keyword_matches) /
+      (num_structural_checks + num_keywords). This denominator scales with
+      the total number of checks, making the score more discriminating.
     - **qa** / **reasoning** tasks: case-insensitive substring match of each
       expected keyword against the response text.  Score = matched / total.
-    - **empty** expected_keywords: neutral default of 0.5.
+    - **empty** expected_keywords: score purely on structural elements.
 
     Args:
         result: A result dict with at least ``response`` and ``task_type``.
@@ -33,32 +34,45 @@ def score_result(result: dict[str, Any], task: dict[str, Any]) -> dict[str, Any]
     matched_keywords: list[str] = []
 
     if task_type == "code":
-        # Structural elements to check
+        # Structural elements to check — stricter than before
         structural_checks = [
             ("def ", "def "),
-            ("type_hint", r":[ \t]+\w"),
-            ("docstring", '"""'),
+            ("type_hint", r":[ \t]+[A-Z\w\[\]]"),  # real type (capitalized) or generic
+            ("docstring", '"""[^"]+'),  # triple-quote with actual content
+            ("return", r"\breturn\b"),
+            ("error_handling", r"(try|except|raise|ValueError|TypeError|KeyError)"),
         ]
         structural_matches = 0
         for _label, pattern in structural_checks:
             if re.search(pattern, response):
                 structural_matches += 1
 
-        # Also check expected keywords as structural hints
+        # Check expected keywords
         keyword_matches = 0
         for kw in expected_keywords:
             if kw.lower() in response.lower():
                 keyword_matches += 1
                 matched_keywords.append(kw)
 
-        total_denominator = len(expected_keywords) + 3
+        # Denominator scales with total checks — more checks = more discriminating
+        total_denominator = len(structural_checks) + len(expected_keywords)
         result["score"] = round((structural_matches + keyword_matches) / total_denominator, 4)
         result["matched_keywords"] = matched_keywords
         return result
 
     if not expected_keywords:
-        # Neutral default for non-code tasks when no keywords are specified
-        result["score"] = 0.5
+        # No keywords: score purely on structural elements (same formula as code)
+        structural_checks = [
+            ("def ", "def "),
+            ("type_hint", r":[ \t]+[A-Z\w\[\]]"),
+            ("docstring", '"""[^"]+'),
+            ("return", r"\breturn\b"),
+            ("error_handling", r"(try|except|raise|ValueError|TypeError|KeyError)"),
+        ]
+        structural_matches = sum(
+            1 for _label, pattern in structural_checks if re.search(pattern, response)
+        )
+        result["score"] = round(structural_matches / len(structural_checks), 4)
         result["matched_keywords"] = []
         return result
 

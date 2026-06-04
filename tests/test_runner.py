@@ -179,9 +179,10 @@ class TestResultsWriting:
 
             assert results_path.exists()
             data = json.loads(results_path.read_text())
-            assert isinstance(data, list)
-            assert len(data) == 1
-            entry = data[0]
+            assert isinstance(data, dict)
+            assert 'results' in data
+            assert len(data['results']) == 1
+            entry = data['results'][0]
             # Verify run_id is a valid UUID
             uuid.UUID(entry["run_id"])
 
@@ -246,14 +247,15 @@ class TestResultsWriting:
                 assert isinstance(entry["score"], float), f"score is not a float for task {entry['task_id']}"
                 assert 0.0 <= entry["score"] <= 1.0, f"score out of range for task {entry['task_id']}: {entry['score']}"
 
-            # Verify written file also has scores
+            # Verify written file also has scores (data is dict with 'results' key)
             data = json.loads(results_path.read_text())
-            for entry in data:
+            results_list = data.get("results", data) if isinstance(data, dict) else data
+            for entry in results_list:
                 assert entry["score"] is not None
                 assert isinstance(entry["score"], float)
                 assert 0.0 <= entry["score"] <= 1.0
 
-    def test_results_json_is_array_not_append(self, tmp_path):
+    def test_results_json_preserves_historical_runs(self, tmp_path):
         """Results are written as a complete JSON array, not appended."""
         config_path = _write_temp_config(tmp_path)
         results_dir = tmp_path / "results"
@@ -284,9 +286,10 @@ class TestResultsWriting:
             )
             second_data = json.loads(results_path.read_text())
 
-            # Both runs should have 1 entry (overwrite, not append)
-            assert len(first_data) == 1
-            assert len(second_data) == 1
+            # First run: 1 result
+            assert len(first_data.get("results", first_data)) == 1
+            # Second run: 2 results (1 historical + 1 new)
+            assert len(second_data.get("results", second_data)) == 2
 
     def test_run_benchmark_returns_results_list(self, tmp_path):
         """run_benchmark returns the list of result dicts."""

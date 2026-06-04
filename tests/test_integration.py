@@ -35,7 +35,7 @@ def _mock_results_unscored():
             "task_id": 1,
             "task_type": "code",
             "prompt": "Write a linked-list reverse function",
-            "response": "def reverse_linked_list(head):\n    \"\"\"Reverse a linked list.\"\"\"\n    prev = None\n    curr = head\n    while curr:\n        nxt = curr.next\n        curr.next = prev\n        prev = curr\n        curr = nxt\n    return prev",
+            "response": "def reverse_linked_list(head: 'ListNode') -> 'ListNode':\n    \"\"\"Reverse a linked list.\"\"\"\n    prev: 'ListNode' = None\n    curr: 'ListNode' = head\n    while curr:\n        nxt = curr.next\n        curr.next = prev\n        prev = curr\n        curr = nxt\n    return prev",
             "score": None,
             "timestamp": "2026-06-01T12:00:00+00:00",
         },
@@ -180,7 +180,7 @@ def test_report_contains_all_task_types():
             in_breakdown = True
             continue
         if in_breakdown:
-            if line.startswith("## "):
+            if line.startswith("#"):
                 break
             if line.strip().startswith("|") and "---" not in line:
                 cells = [c.strip() for c in line.split("|") if c.strip()]
@@ -295,8 +295,8 @@ def test_report_markdown_valid():
             table_started = True
             continue
         if table_started:
-            if line.startswith("## "):
-                break  # end of table
+            if line.startswith("#"):
+                break  # any heading
             if not line.strip():
                 continue
             if "| Task ID | Type | Score | Matched Keywords |" in line:
@@ -326,7 +326,7 @@ def test_report_markdown_valid():
             config_started = True
             continue
         if config_started:
-            if line.startswith("## "):
+            if line.startswith("#"):
                 break
             if not line.strip():
                 continue

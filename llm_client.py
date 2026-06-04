@@ -57,13 +57,16 @@ class LLMClient:
         """
         self.base_url = base_url.rstrip("/")
         self.params = params
-        self._client = httpx.AsyncClient(timeout=120.0)
+        self._client = httpx.AsyncClient(timeout=300.0)
 
     # ── public API ────────────────────────────────────────────────
 
     async def complete(self, system_prompt: str, user_prompt: str) -> str:
         """
         Send a chat completion request and return the response text.
+
+        Uses streaming mode to work around llama.cpp returning empty
+        content in non-streaming responses.
 
         Args:
             system_prompt: System message content.
@@ -77,59 +80,53 @@ class LLMClient:
             httpx.HTTPError: On persistent network failure (after retry).
         """
         payload = self._build_payload(system_prompt, user_prompt)
+        payload["stream"] = True  # llama.cpp needs streaming for content
         _logger.debug("Request payload: %s", json.dumps(payload, default=str))
 
         last_exc = None
         for attempt in range(2):  # 1 initial + 1 retry
             try:
-                response = await self._client.post(
+                async with self._client.stream(
+                    "POST",
                     f"{self.base_url}/v1/chat/completions",
                     json=payload,
-                )
+                ) as response:
+                    # Handle 5xx / rate-limit with retry
+                    if response.status_code in (429, 500, 502, 503, 504):
+                        if attempt == 0:
+                            wait = 2 ** attempt  # 2s backoff
+                            _logger.warning(
+                                "HTTP %s on attempt %d - retrying in %ds",
+                                response.status_code, attempt + 1, wait,
+                            )
+                            await self._client.aclose()
+                            await self._aclose_and_recreate()
+                            await asyncio.sleep(min(wait, 1))
+                            continue
+                        else:
+                            _logger.error(
+                                "HTTP %s on retry - giving up", response.status_code,
+                            )
+                            raise httpx.HTTPError(
+                                f"Server error {response.status_code} after retry"
+                            )
 
-                # Handle 5xx / rate-limit with retry
-                if response.status_code in (429, 500, 502, 503, 504):
-                    if attempt == 0:
-                        wait = 2 ** attempt  # 2s backoff
-                        _logger.warning(
-                            "HTTP %s on attempt %d — retrying in %ds",
-                            response.status_code, attempt + 1, wait,
-                        )
-                        await self._client.aclose()
-                        await self._aclose_and_recreate()
-                        await asyncio.sleep(wait)
-                        continue
-                    else:
-                        _logger.error(
-                            "HTTP %s on retry — giving up", response.status_code,
-                        )
-                        raise httpx.HTTPError(
-                            f"Server error {response.status_code} after retry"
-                        )
+                    response.raise_for_status()
 
-                response.raise_for_status()
-
-                # Parse JSON response
-                try:
-                    data = response.json()
-                except json.JSONDecodeError as exc:
-                    _logger.error("Invalid JSON response: %s", exc)
-                    raise RuntimeError(f"Invalid JSON from server: {exc}") from exc
-
-                # Extract text from OpenAI-compatible response shape
-                text = self._extract_text(data)
-                _logger.info("Response received (%d chars)", len(text))
-                return text
+                    # Parse streaming SSE chunks
+                    text = await self._extract_stream_text(response)
+                    _logger.info("Response received (%d chars)", len(text))
+                    return text
 
             except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
                 last_exc = exc
                 if attempt == 0:
                     _logger.warning(
-                        "Connection failed on attempt %d — retrying", attempt + 1,
+                        "Connection failed on attempt %d - retrying", attempt + 1,
                     )
                     await self._client.aclose()
                     await self._aclose_and_recreate()
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(1)
                     continue
                 _logger.error("Connection failed after retry: %s", exc)
                 raise
@@ -198,6 +195,24 @@ class LLMClient:
         return payload
 
     @staticmethod
+    async def _extract_stream_text(response) -> str:
+        """Extract text from streaming SSE response chunks."""
+        full_text = ""
+        async for line in response.aiter_lines():
+            if line.startswith("data: "):
+                data_str = line[6:]
+                if data_str.strip() == "[DONE]":
+                    break
+                try:
+                    data = json.loads(data_str)
+                    delta = data.get("choices", [{}])[0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        full_text += content
+                except json.JSONDecodeError:
+                    continue
+        return full_text
+
     def _extract_text(data: dict) -> str:
         """Extract response text from OpenAI-compatible JSON response."""
         choices = data.get("choices", [])
@@ -211,4 +226,4 @@ class LLMClient:
 
     async def _aclose_and_recreate(self):
         """Recreate the HTTP client for retry."""
-        self._client = httpx.AsyncClient(timeout=120.0)
+        self._client = httpx.AsyncClient(timeout=300.0)

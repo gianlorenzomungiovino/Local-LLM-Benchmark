@@ -37,11 +37,12 @@ def test_keyword_match_case_insensitive():
 
 
 def test_keyword_match_none():
-    """Empty expected_keywords returns score=0.5 (neutral default)."""
+    """Empty expected_keywords uses structural checks only. Plain text has no structure -> 0.0."""
     result = {"response": "anything at all"}
     task = {"type": "qa", "expected_keywords": []}
     score_result(result, task)
-    assert result["score"] == 0.5
+    # No structural elements (no def, no type hint, no docstring, no return, no error handling)
+    assert result["score"] == 0.0
     assert result["matched_keywords"] == []
 
 
@@ -65,8 +66,8 @@ def test_code_scoring_with_keywords():
     score_result(result, task)
     # Structural: def (1), type_hint (1), docstring (1) = 3
     # Keywords: "reverse" found, "linked" found, "list" found = 3
-    # score = (2 + 3) / (3 + 3) = 0.8333
-    assert result["score"] == round(5 / 6, 4)
+    # score = (2 + 3) / (5 + 3) = 0.625
+    assert result["score"] == round(5 / 8, 4)
     assert "reverse" in result["matched_keywords"]
     assert "linked" in result["matched_keywords"]
     assert "list" in result["matched_keywords"]
@@ -77,7 +78,8 @@ def test_code_scoring_no_keywords():
     result = {"response": "def foo():\n    pass"}
     task = {"type": "code", "expected_keywords": []}
     score_result(result, task)
-    assert result["score"] == round(1 / 3, 4)
+    # Structural: def (1) only = 1/5
+    assert result["score"] == round(1 / 5, 4)
     assert result["matched_keywords"] == []
 
 
@@ -98,7 +100,7 @@ def test_code_scoring_no_structure_no_keywords():
     task = {"type": "code", "expected_keywords": ["no_match"]}
     score_result(result, task)
     # Structural: 0, Keywords: 0
-    # score = 0 / (1 + 3) = 0.0
+    # score = 0 / (5 + 1) = 0.0
     assert result["score"] == 0.0
 
 
@@ -223,8 +225,8 @@ def test_score_results_mixed_types():
         {"id": 3, "type": "reasoning", "expected_keywords": ["no", "not necessarily"]},
     ]
     score_results(results, tasks)
-    # Code with no keywords → structural (def only = 1/3)
-    assert results[0]["score"] == round(1 / 3, 4)
+    # Code with no keywords → structural (def only = 1/5)
+    assert results[0]["score"] == round(1 / 5, 4)
     # QA with keyword match → 1.0
     assert results[1]["score"] == 1.0
     # Reasoning with both keywords → 1.0

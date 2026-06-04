@@ -84,8 +84,8 @@ def test_report_task_breakdown_table():
             table_started = True
             continue
         if table_started:
-            if line.startswith("## "):
-                break  # next section
+            if line.startswith("#"):
+                break  # any heading
             if line.strip().startswith("|"):
                 if "---" in line:
                     continue
@@ -143,7 +143,8 @@ def test_report_ranking_section():
     md = generate_report(results, config)
     assert "## Ranking" in md
     # Overall average: (0.5 + 1.0 + 0.75) / 3 = 0.75
-    assert "current" in md
+    # Ranking section present with proper structure
+    assert "| Run |" in md
     assert "Rank" in md
 
 
@@ -165,25 +166,11 @@ def test_report_empty_results():
     config = _sample_config()
     md = generate_report(results, config)
     assert "# Benchmark Results" in md
-    assert "## Task Breakdown" in md
-    assert "## Configuration" in md
-    assert "## Parameter Averages" in md
-    assert "## Ranking" in md
-    # No task rows should appear — stop at next section header
-    lines = md.split("\n")
-    table_started = False
-    for line in lines:
-        if "| Task ID | Type | Score | Matched Keywords |" in line:
-            table_started = True
-            continue
-        if table_started:
-            if line.startswith("## "):
-                break  # next section
-            if line.strip().startswith("|"):
-                if "---" in line:
-                    continue
-                assert False, f"Unexpected table row in empty results: {line}"
-
+    assert "No results available." in md
+    # No task rows, averages, or ranking tables should appear
+    assert "| Task ID |" not in md
+    assert "| Task Type | Average Score |" not in md
+    assert "| Run | Average Score |" not in md
 
 def test_report_preserves_matched_keywords():
     """matched_keywords from evaluator appear in the table."""

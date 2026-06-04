@@ -4,7 +4,12 @@
         "type": "code",
         "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
         "user_prompt": "Write a Python function `reverse_linked_list(head)` that reverses a singly linked list in-place and returns the new head. Include type hints and docstring.",
-        "expected_keywords": [],
+        "expected_keywords": [
+            "return",
+            "prev",
+            "curr",
+            "None"
+        ],
         "code_reference": null
     },
     {
@@ -12,7 +17,11 @@
         "type": "code",
         "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
         "user_prompt": "Implement a binary search function `binary_search(arr, target)` that returns the index of target in a sorted list, or -1 if not found. Include type hints and docstring.",
-        "expected_keywords": [],
+        "expected_keywords": [
+            "index",
+            "-1",
+            "mid"
+        ],
         "code_reference": null
     },
     {
@@ -20,7 +29,11 @@
         "type": "code",
         "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
         "user_prompt": "Write a Python function `is_palindrome(s)` that checks if a string is a palindrome (case-insensitive, ignoring non-alphanumeric characters). Include type hints and docstring.",
-        "expected_keywords": [],
+        "expected_keywords": [
+            "lower",
+            "alphanumeric",
+            "join"
+        ],
         "code_reference": null
     },
     {
@@ -28,7 +41,12 @@
         "type": "code",
         "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
         "user_prompt": "Implement a Stack class in Python with `push`, `pop`, `peek`, `is_empty`, and `get_min` methods. The `get_min` method should return the minimum element in O(1) time. Include type hints and docstring.",
-        "expected_keywords": [],
+        "expected_keywords": [
+            "push",
+            "pop",
+            "get_min",
+            "O(1)"
+        ],
         "code_reference": null
     },
     {
@@ -36,7 +54,10 @@
         "type": "code",
         "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
         "user_prompt": "Write a Python function `flatten(nested_list)` that recursively flattens a nested list of arbitrary depth into a single flat list. Include type hints and docstring.",
-        "expected_keywords": [],
+        "expected_keywords": [
+            "yield",
+            "recurs"
+        ],
         "code_reference": null
     },
     {
@@ -44,7 +65,11 @@
         "type": "code",
         "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
         "user_prompt": "Implement an LRU (Least Recently Used) Cache class in Python with `get` and `put` methods, both in O(1) time complexity. Use OrderedDict or similar. Include type hints and docstring.",
-        "expected_keywords": [],
+        "expected_keywords": [
+            "OrderedDict",
+            "deque",
+            "O(1)"
+        ],
         "code_reference": null
     },
     {
@@ -52,7 +77,11 @@
         "type": "code",
         "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
         "user_prompt": "Write a Python function `longest_common_subsequence(s1, s2)` that returns the length of the longest common subsequence between two strings using dynamic programming. Include type hints and docstring.",
-        "expected_keywords": [],
+        "expected_keywords": [
+            "dp",
+            "dynamic",
+            "table"
+        ],
         "code_reference": null
     },
     {
@@ -60,7 +89,12 @@
         "type": "code",
         "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
         "user_prompt": "Implement a simple arithmetic expression parser in Python that evaluates expressions like '3 + 5 * 2' respecting operator precedence (addition, subtraction, multiplication, division, parentheses). Return the numeric result. Include type hints and docstring.",
-        "expected_keywords": [],
+        "expected_keywords": [
+            "eval",
+            "parse",
+            "precedence",
+            "operator"
+        ],
         "code_reference": null
     },
     {
@@ -68,7 +102,12 @@
         "type": "qa",
         "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
         "user_prompt": "What is the time complexity of quicksort in the average case, and what is the worst case?",
-        "expected_keywords": ["o(n log n)", "o(n^2)", "worst", "pivot"],
+        "expected_keywords": [
+            "o(n log n)",
+            "o(n^2)",
+            "pivot",
+            "worst case"
+        ],
         "code_reference": null
     },
     {
@@ -76,7 +115,11 @@
         "type": "qa",
         "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
         "user_prompt": "What does the `yield` keyword do in Python, and what type of object does a function with `yield` return?",
-        "expected_keywords": ["generator", "iterator", "yield"],
+        "expected_keywords": [
+            "generator",
+            "iterator",
+            "__next__"
+        ],
         "code_reference": null
     },
     {
@@ -84,7 +127,12 @@
         "type": "qa",
         "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
         "user_prompt": "What is the difference between `==` and `is` in Python?",
-        "expected_keywords": ["equality", "identity", "value", "reference"],
+        "expected_keywords": [
+            "equality",
+            "identity",
+            "value",
+            "memory"
+        ],
         "code_reference": null
     },
     {
@@ -92,7 +140,12 @@
         "type": "qa",
         "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
         "user_prompt": "What is the purpose of a virtual environment (venv) in Python, and why is it recommended?",
-        "expected_keywords": ["dependency", "isolation", "package", "project"],
+        "expected_keywords": [
+            "dependency",
+            "isolation",
+            "package",
+            "conflict"
+        ],
         "code_reference": null
     },
     {
@@ -100,7 +153,12 @@
         "type": "reasoning",
         "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
         "user_prompt": "If all cats are animals, and some animals are pets, can we conclude that some cats are pets? Explain your reasoning step by step.",
-        "expected_keywords": ["no", "not necessarily", "cannot conclude", "invalid"],
+        "expected_keywords": [
+            "no",
+            "not necessarily",
+            "cannot conclude",
+            "invalid"
+        ],
         "code_reference": null
     },
     {
@@ -108,7 +166,13 @@
         "type": "reasoning",
         "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
         "user_prompt": "A train leaves Station A at 60 mph heading east. One hour later, a second train leaves Station A at 90 mph heading east. How long after the second train leaves will it catch up to the first train?",
-        "expected_keywords": ["2", "hours", "catch", "distance"],
+        "expected_keywords": [
+            "2",
+            "hours",
+            "catch",
+            "distance",
+            "equation"
+        ],
         "code_reference": null
     },
     {
@@ -116,7 +180,13 @@
         "type": "reasoning",
         "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
         "user_prompt": "If it rains, the ground is wet. The ground is wet. Can we conclude that it rained? Explain why or why not using logical reasoning.",
-        "expected_keywords": ["no", "not necessarily", "cannot conclude", "affirming", "consequent"],
+        "expected_keywords": [
+            "no",
+            "not necessarily",
+            "cannot conclude",
+            "affirming",
+            "consequent"
+        ],
         "code_reference": null
     }
 ]

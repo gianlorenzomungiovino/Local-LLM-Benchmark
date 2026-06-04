@@ -3,118 +3,180 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 
+def _format_timestamp(ts: str) -> str:
+    """Convert an ISO timestamp to Europe/Rome display format."""
+    try:
+        dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        from zoneinfo import ZoneInfo
+        dt_rome = dt.astimezone(ZoneInfo("Europe/Rome"))
+        return dt_rome.strftime("%Y-%m-%d %H:%M:%S %Z (UTC%z)")
+    except Exception:
+        return ts
+
+
+def _avg(scores: list[float]) -> float:
+    """Compute average of a list of floats."""
+    return sum(scores) / len(scores) if scores else 0.0
+
+
 def generate_report(
     results: list[dict[str, Any]],
-    config: dict[str, Any],
+    configs: list[dict[str, Any]] | dict[str, Any] | None = None,
     output_path: str = "results/results.md",
 ) -> str:
     """Generate a human-readable markdown report from benchmark results.
 
     Sections:
-    - **Header** with run_id and timestamp from the first result.
-    - **Task Breakdown** table (Task ID, Type, Score, Matched Keywords).
-    - **Configuration** table (parameter name, value).
-    - **Parameter Averages** — mean score per task type.
-    - **Ranking** — average score and rank for the single config.
+    - **Run List** - all runs with run_id, timestamp, task count, and per-run config.
+    - **Per-Run Task Breakdown** - table nested under each run.
+    - **Per-Run Parameter Averages** - mean score per task type per run.
+    - **Global Parameter Averages** - mean score per task type across all runs.
+    - **Ranking** - average score and rank per run.
 
     Args:
-        results: List of result dicts (each with task_id, task_type, score,
-            matched_keywords, run_id, timestamp).
-        config: Configuration dict with parameter names and values.
-        output_path: File path to write the markdown report.
-
-    Returns:
-        The generated markdown string.
+        results: Flat list of all result dicts.
+        configs: Either a single config dict (shared across all runs)
+                 or a list of config dicts, one per run (in run order).
     """
     lines: list[str] = []
+
+    if configs is None:
+        configs = {}
 
     # --- Header ---
     lines.append("# Benchmark Results\n")
 
     if results:
-        first = results[0]
-        run_id = first.get("run_id", "unknown")
-        ts = first.get("timestamp", "unknown")
-        lines.append(f"- **Run ID:** `{run_id}`")
-        lines.append(f"- **Timestamp:** {ts}")
+        runs: dict[str, list[dict]] = defaultdict(list)
+        for r in results:
+            runs[r.get("run_id", "unknown")].append(r)
+
+        run_list = sorted(runs.keys(), key=lambda rid: (
+            min((r.get("timestamp", "") for r in runs[rid]), default="")
+        ))
+
+        lines.append(f"**{len(run_list)} run(s) recorded.**\n")
+
+        # --- Per-Run: header + config + breakdown + averages (all nested) ---
+        for i, run_id in enumerate(run_list, 1):
+            run_results = runs[run_id]
+            ts = run_results[0].get("timestamp", "unknown")
+            if i > 1:
+                lines.append("---")
+                lines.append("")
+
+            lines.append(f"### Run {i}: `{run_id}`\n")
+            lines.append(f"- **Timestamp:** {_format_timestamp(ts)}")
+            lines.append(f"- **Tasks:** {len(run_results)}")
+            lines.append("")
+
+            # Per-run configuration
+            if isinstance(configs, list) and i <= len(configs):
+                run_config = configs[i - 1]
+            elif isinstance(configs, dict) and configs:
+                # Single shared config: only apply to the most recent run (last in list).
+                # Historical runs keep their own configs from results.json if available.
+                run_config = configs if i == len(run_list) else {}
+            else:
+                run_config = {}
+
+            if run_config:
+                lines.append("#### Configuration\n")
+                lines.append("| Parameter | Value |")
+                lines.append("|-----------|-------|")
+                for key, value in run_config.items():
+                    display_value = str(value)
+                    lines.append(f"| {key} | `{display_value}` |")
+                lines.append("")
+
+            # Per-Run Task Breakdown
+            lines.append("#### Task Breakdown\n")
+            lines.append("| Task ID | Type | Score | Matched Keywords |")
+            lines.append("|---------|------|-------|------------------|")
+
+            for r in run_results:
+                task_id = r.get("task_id", "?")
+                task_type = r.get("task_type", "unknown")
+                score = r.get("score")
+                score_str = f"{score:.4f}" if score is not None else "N/A"
+                matched = r.get("matched_keywords") or []
+                kw_str = ", ".join(matched) if matched else "\u2014"
+                lines.append(f"| {task_id} | {task_type} | {score_str} | {kw_str} |")
+
+            lines.append("")
+
+            # Per-Run Parameter Averages
+            type_scores_run: dict[str, list[float]] = {}
+            for r in run_results:
+                tt = r.get("task_type", "unknown")
+                sc = r.get("score")
+                if sc is not None:
+                    type_scores_run.setdefault(tt, []).append(sc)
+
+            if type_scores_run:
+                lines.append("##### Parameter Averages\n")
+                lines.append("| Task Type | Average Score |")
+                lines.append("|-----------|---------------|")
+                for tt in sorted(type_scores_run):
+                    scores = type_scores_run[tt]
+                    lines.append(f"| {tt} | {_avg(scores):.4f} |")
+                lines.append("")
+            else:
+                lines.append("##### Parameter Averages\n")
+                lines.append("No scored results available.")
+                lines.append("")
+
+        # --- Global Parameter Averages ---
+        lines.append("## Global Parameter Averages\n")
+        type_scores: dict[str, list[float]] = {}
+        for r in results:
+            tt = r.get("task_type", "unknown")
+            sc = r.get("score")
+            if sc is not None:
+                type_scores.setdefault(tt, []).append(sc)
+
+        if type_scores:
+            lines.append("| Task Type | Average Score |")
+            lines.append("|-----------|---------------|")
+            for tt in sorted(type_scores):
+                scores = type_scores[tt]
+                lines.append(f"| {tt} | {_avg(scores):.4f} |")
+        else:
+            lines.append("No scored results available.")
+        lines.append("")
+
+        # --- Ranking ---
+        lines.append("## Ranking\n")
+        lines.append("| Run | Average Score | Rank |")
+        lines.append("|-----|---------------|------|")
+
+        run_avgs: list[tuple[str, float]] = []
+        for run_id in run_list:
+            run_results = runs[run_id]
+            run_scores = [r.get("score") for r in run_results if r.get("score") is not None]
+            avg = _avg(run_scores)
+            run_avgs.append((run_id, avg))
+
+        run_avgs.sort(key=lambda x: x[1], reverse=True)
+        run_id_to_number = {rid: i for i, rid in enumerate(run_list, 1)}
+        for rank, (run_id, avg) in enumerate(run_avgs, 1):
+            run_num = run_id_to_number.get(run_id, "?")
+            lines.append(f"| {run_num} | {avg:.4f} | {rank} |")
     else:
-        lines.append("- **Run ID:** N/A")
-        lines.append("- **Timestamp:** N/A")
-    lines.append("")
-
-    # --- Task Breakdown ---
-    lines.append("## Task Breakdown\n")
-    lines.append("| Task ID | Type | Score | Matched Keywords |")
-    lines.append("|---------|------|-------|------------------|")
-
-    for r in results:
-        task_id = r.get("task_id", "?")
-        task_type = r.get("task_type", "unknown")
-        score = r.get("score")
-        score_str = f"{score:.4f}" if score is not None else "N/A"
-        matched = r.get("matched_keywords") or []
-        kw_str = ", ".join(matched) if matched else "—"
-        lines.append(f"| {task_id} | {task_type} | {score_str} | {kw_str} |")
-
-    lines.append("")
-
-    # --- Configuration ---
-    lines.append("## Configuration\n")
-    lines.append("| Parameter | Value |")
-    lines.append("|-----------|-------|")
-
-    for key, value in config.items():
-        display_value = str(value)
-        lines.append(f"| {key} | `{display_value}` |")
-
-    lines.append("")
-
-    # --- Parameter Averages ---
-    lines.append("## Parameter Averages\n")
-
-    type_scores: dict[str, list[float]] = {}
-    for r in results:
-        tt = r.get("task_type", "unknown")
-        sc = r.get("score")
-        if sc is not None:
-            type_scores.setdefault(tt, []).append(sc)
-
-    if type_scores:
-        lines.append("| Task Type | Average Score |")
-        lines.append("|-----------|---------------|")
-        for tt in sorted(type_scores):
-            scores = type_scores[tt]
-            avg = sum(scores) / len(scores)
-            lines.append(f"| {tt} | {avg:.4f} |")
-    else:
-        lines.append("No scored results available.")
-
-    lines.append("")
-
-    # --- Ranking ---
-    lines.append("## Ranking\n")
-
-    if type_scores:
-        all_scores: list[float] = []
-        for scores in type_scores.values():
-            all_scores.extend(scores)
-        overall_avg = sum(all_scores) / len(all_scores) if all_scores else 0.0
-        lines.append(f"| Configuration | Average Score | Rank |")
-        lines.append("|---------------|---------------|------|")
-        lines.append(f"| current | {overall_avg:.4f} | 1 |")
-    else:
-        lines.append("No scored results available for ranking.")
+        lines.append("No results available.\n")
 
     lines.append("")
 
     markdown = "\n".join(lines)
 
-    # Write to file
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(markdown, encoding="utf-8")
@@ -127,22 +189,25 @@ def generate_report_from_file(
     config_path: str = "configs/run.json",
     output_path: str = "results/results.md",
 ) -> str:
-    """Load results and config from JSON files and generate a report.
+    """Load results and per-run configs from results.json and generate a report.
 
-    Convenience wrapper around ``generate_report`` that reads from disk.
-
-    Args:
-        results_path: Path to the results JSON file.
-        config_path: Path to the config JSON file.
-        output_path: Path for the markdown output.
-
-    Returns:
-        The generated markdown string.
+    If results.json contains a "configs" array (per-run configs), uses that.
+    Otherwise falls back to config_path for a shared config.
     """
     with open(results_path, "r", encoding="utf-8") as f:
-        results = json.load(f)
+        data = json.load(f)
 
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
+    # Handle both old format (flat list) and new format (dict with results+configs)
+    if isinstance(data, dict):
+        results = data.get("results", [])
+        configs = data.get("configs", None)
+    else:
+        results = data
+        configs = None
 
-    return generate_report(results, config, output_path)
+    # Fallback to config file if no per-run configs stored
+    if configs is None or configs == []:
+        with open(config_path, "r", encoding="utf-8") as f:
+            configs = json.load(f)
+
+    return generate_report(results, configs, output_path)
