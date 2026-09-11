@@ -80,7 +80,7 @@ def test_report_task_breakdown_table():
     table_started = False
     task_rows = 0
     for line in lines:
-        if "| Task ID | Type | Score | Matched Keywords |" in line:
+        if "| Task ID | Type | Difficulty | Score | Matched Keywords |" in line:
             table_started = True
             continue
         if table_started:
@@ -91,7 +91,7 @@ def test_report_task_breakdown_table():
                     continue
                 task_rows += 1
                 cells = [c.strip() for c in line.split("|") if c.strip()]
-                assert len(cells) == 4, f"Expected 4 cells, got {len(cells)} in row: {line}"
+                assert len(cells) == 5, f"Expected 5 cells, got {len(cells)} in row: {line}"
     assert task_rows == 3, f"Expected 3 task rows, got {task_rows}"
 
 

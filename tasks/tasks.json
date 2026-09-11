@@ -1,192 +1,441 @@
 [
     {
-        "id": 1,
-        "type": "code",
-        "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
-        "user_prompt": "Write a Python function `reverse_linked_list(head)` that reverses a singly linked list in-place and returns the new head. Include type hints and docstring.",
-        "expected_keywords": [
-            "return",
-            "prev",
-            "curr",
-            "None"
+        "id": 101,
+        "type": "code_execute",
+        "difficulty": "medium",
+        "system_prompt": "You are a Python programming expert. Write correct, efficient, well-tested code. Return only the code block.",
+        "user_prompt": "Implement a function `two_sum(nums: list[int], target: int) -> list[int]` that returns the indices of two numbers that add up to target. Assume exactly one solution exists and you cannot use the same element twice. Include type hints and docstring.",
+        "test_cases": [
+            {"input": {"nums": [2, 7, 11, 15], "target": 9}, "expected": [0, 1]},
+            {"input": {"nums": [3, 2, 4], "target": 6}, "expected": [1, 2]},
+            {"input": {"nums": [3, 3], "target": 6}, "expected": [0, 1]}
         ],
+        "expected_keywords": ["dict", "enumerate", "target", "complement"],
         "code_reference": null
     },
     {
-        "id": 2,
-        "type": "code",
-        "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
-        "user_prompt": "Implement a binary search function `binary_search(arr, target)` that returns the index of target in a sorted list, or -1 if not found. Include type hints and docstring.",
-        "expected_keywords": [
-            "index",
-            "-1",
-            "mid"
+        "id": 102,
+        "type": "code_execute",
+        "difficulty": "medium",
+        "system_prompt": "You are a Python programming expert. Write correct, efficient, well-tested code. Return only the code block.",
+        "user_prompt": "Implement a function `merge_intervals(intervals: list[list[int]]) -> list[list[int]]` that merges overlapping intervals and returns the non-overlapping intervals covering all inputs. Include type hints and docstring.",
+        "test_cases": [
+            {"input": {"intervals": [[1, 3], [2, 6], [8, 10], [15, 18]]}, "expected": [[1, 6], [8, 10], [15, 18]]},
+            {"input": {"intervals": [[1, 4], [4, 5]]}, "expected": [[1, 5]]},
+            {"input": {"intervals": [[1, 4], [0, 4]]}, "expected": [[0, 4]]}
         ],
+        "expected_keywords": ["sort", "append", "interval", "end"],
         "code_reference": null
     },
     {
-        "id": 3,
-        "type": "code",
-        "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
-        "user_prompt": "Write a Python function `is_palindrome(s)` that checks if a string is a palindrome (case-insensitive, ignoring non-alphanumeric characters). Include type hints and docstring.",
-        "expected_keywords": [
-            "lower",
-            "alphanumeric",
-            "join"
+        "id": 103,
+        "type": "code_execute",
+        "difficulty": "hard",
+        "system_prompt": "You are a Python programming expert. Write correct, efficient, well-tested code. Return only the code block.",
+        "user_prompt": "Implement a function `lru_cache_get_put(capacity: int)` that returns an LRU Cache class with `get(key)` and `put(key, value)` methods, both O(1). The cache evicts the least recently used item when full. Include type hints and docstring.",
+        "test_cases": [
+            {"input": {"ops": ["put", "put", "get", "put", "get", "put", "get"], "args": [[1, 1], [2, 2], [1], [3, 3], [2], [4, 4], [1]]}, "expected": [1, -1, -1]},
+            {"input": {"ops": ["get", "put", "get"], "args": [[1], [1, 1], [1]]}, "expected": [-1, 1]}
         ],
+        "expected_keywords": ["OrderedDict", "move_to_end", "popitem", "O(1)"],
         "code_reference": null
     },
     {
-        "id": 4,
-        "type": "code",
-        "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
-        "user_prompt": "Implement a Stack class in Python with `push`, `pop`, `peek`, `is_empty`, and `get_min` methods. The `get_min` method should return the minimum element in O(1) time. Include type hints and docstring.",
-        "expected_keywords": [
-            "push",
-            "pop",
-            "get_min",
-            "O(1)"
+        "id": 104,
+        "type": "code_execute",
+        "difficulty": "hard",
+        "system_prompt": "You are a Python programming expert. Write correct, efficient, well-tested code. Return only the code block.",
+        "user_prompt": "Implement a function `flatten_nested(nested_list)` that recursively flattens a nested list of arbitrary depth (including nested tuples) into a single flat list. Must handle deeply nested structures. Include type hints and docstring.",
+        "test_cases": [
+            {"input": {"nested_list": [1, [2, [3, 4], 5], 6]}, "expected": [1, 2, 3, 4, 5, 6]},
+            {"input": {"nested_list": [[1, 2], [3, [4, [5]]]]}, "expected": [1, 2, 3, 4, 5]},
+            {"input": {"nested_list": []}, "expected": []}
         ],
+        "expected_keywords": ["yield", "isinstance", "list", "tuple", "recurs"],
         "code_reference": null
     },
     {
-        "id": 5,
-        "type": "code",
-        "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
-        "user_prompt": "Write a Python function `flatten(nested_list)` that recursively flattens a nested list of arbitrary depth into a single flat list. Include type hints and docstring.",
-        "expected_keywords": [
-            "yield",
-            "recurs"
+        "id": 105,
+        "type": "code_execute",
+        "difficulty": "hard",
+        "system_prompt": "You are a Python programming expert. Write correct, efficient, well-tested code. Return only the code block.",
+        "user_prompt": "Implement a function `longest_palindromic_substring(s: str) -> str` that finds the longest palindromic substring using an efficient approach (expand around center or Manacher's algorithm). Include type hints and docstring.",
+        "test_cases": [
+            {"input": {"s": "babad"}, "expected": "bab"},
+            {"input": {"s": "cbbd"}, "expected": "bb"},
+            {"input": {"s": "a"}, "expected": "a"},
+            {"input": {"s": "ac"}, "expected": "a"}
         ],
+        "expected_keywords": ["expand", "center", "left", "right", "max_len"],
         "code_reference": null
     },
     {
-        "id": 6,
-        "type": "code",
-        "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
-        "user_prompt": "Implement an LRU (Least Recently Used) Cache class in Python with `get` and `put` methods, both in O(1) time complexity. Use OrderedDict or similar. Include type hints and docstring.",
-        "expected_keywords": [
-            "OrderedDict",
-            "deque",
-            "O(1)"
+        "id": 106,
+        "type": "code_execute",
+        "difficulty": "medium",
+        "system_prompt": "You are a Python programming expert. Write correct, efficient, well-tested code. Return only the code block.",
+        "user_prompt": "Implement a function `word_ladder(begin_word: str, end_word: str, word_list: list[str]) -> int` that returns the number of words in the shortest transformation sequence from begin_word to end_word, where each step changes exactly one letter. Return 0 if no such sequence exists. Include type hints and docstring.",
+        "test_cases": [
+            {"input": {"begin_word": "hit", "end_word": "cog", "word_list": ["hot", "dot", "dog", "lot", "log", "cog"]}, "expected": 4},
+            {"input": {"begin_word": "hit", "end_word": "cog", "word_list": ["hot", "dot", "dog", "lot", "log"]}, "expected": 0}
         ],
+        "expected_keywords": ["queue", "deque", "visited", "set", "bfs"],
         "code_reference": null
     },
     {
-        "id": 7,
-        "type": "code",
-        "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
-        "user_prompt": "Write a Python function `longest_common_subsequence(s1, s2)` that returns the length of the longest common subsequence between two strings using dynamic programming. Include type hints and docstring.",
-        "expected_keywords": [
-            "dp",
-            "dynamic",
-            "table"
+        "id": 107,
+        "type": "code_execute",
+        "difficulty": "hard",
+        "system_prompt": "You are a Python programming expert. Write correct, efficient, well-tested code. Return only the code block.",
+        "user_prompt": "Implement a function `serialize_deserialize(root)` that implements binary tree serialization and deserialization. The serialize function converts a tree to a string, and deserialize converts it back. Use BFS level-order traversal. Include type hints and docstring.",
+        "test_cases": [
+            {"input": {"tree": [1, 2, 3, null, null, 4, 5]}, "expected": "[1,2,3,null,null,4,5]"},
+            {"input": {"tree": []}, "expected": "[]"}
         ],
+        "expected_keywords": ["queue", "deque", "split", "join", "level"],
         "code_reference": null
     },
     {
-        "id": 8,
-        "type": "code",
-        "system_prompt": "You are a Python programming assistant. Write clean, efficient, well-documented Python code. Return only the code block.",
-        "user_prompt": "Implement a simple arithmetic expression parser in Python that evaluates expressions like '3 + 5 * 2' respecting operator precedence (addition, subtraction, multiplication, division, parentheses). Return the numeric result. Include type hints and docstring.",
-        "expected_keywords": [
-            "eval",
-            "parse",
-            "precedence",
-            "operator"
+        "id": 108,
+        "type": "code_execute",
+        "difficulty": "medium",
+        "system_prompt": "You are a Python programming expert. Write correct, efficient, well-tested code. Return only the code block.",
+        "user_prompt": "Implement a function `group_anagrams(words: list[str]) -> list[list[str]]` that groups anagrams together. An anagram is a word formed by rearranging the letters of another. Return groups as a list of lists. Include type hints and docstring.",
+        "test_cases": [
+            {"input": {"words": ["eat", "tea", "tan", "ate", "nat", "bat"]}, "expected": [["eat", "tea", "ate"], ["tan", "nat"], ["bat"]]},
+            {"input": {"words": [""]}, "expected": [[""]]},
+            {"input": {"words": ["a"]}, "expected": [["a"]]}
         ],
+        "expected_keywords": ["sorted", "tuple", "defaultdict", "group", "key"],
         "code_reference": null
     },
     {
-        "id": 9,
-        "type": "qa",
-        "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
-        "user_prompt": "What is the time complexity of quicksort in the average case, and what is the worst case?",
-        "expected_keywords": [
-            "o(n log n)",
-            "o(n^2)",
-            "pivot",
-            "worst case"
-        ],
+        "id": 201,
+        "type": "reasoning_math",
+        "difficulty": "hard",
+        "system_prompt": "You are a mathematical reasoning assistant. Show your step-by-step work clearly.",
+        "user_prompt": "Let f(x) = x³ - 3x + 1. How many distinct real roots does the equation f(f(f(x))) = 0 have? Explain your reasoning step by step.",
+        "expected_keywords": ["7", "729", "composition", "degree", "roots"],
+        "verification": "numeric_range",
+        "answer_range": [1, 27],
         "code_reference": null
     },
     {
-        "id": 10,
-        "type": "qa",
-        "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
-        "user_prompt": "What does the `yield` keyword do in Python, and what type of object does a function with `yield` return?",
-        "expected_keywords": [
-            "generator",
-            "iterator",
-            "__next__"
-        ],
+        "id": 202,
+        "type": "reasoning_math",
+        "difficulty": "hard",
+        "system_prompt": "You are a mathematical reasoning assistant. Show your step-by-step work clearly.",
+        "user_prompt": "A sequence is defined by a_1 = 1, a_2 = 1, and aₙ = aₙ₋_1 + aₙ₋_2 for n ≥ 3 (Fibonacci). What is the greatest common divisor of a_1₀₀ and a_2₀₀? Prove your answer.",
+        "expected_keywords": ["1", "gcd", "property", "Euclidean", "index"],
+        "verification": "numeric_exact",
+        "answer": 1,
         "code_reference": null
     },
     {
-        "id": 11,
-        "type": "qa",
-        "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
-        "user_prompt": "What is the difference between `==` and `is` in Python?",
-        "expected_keywords": [
-            "equality",
-            "identity",
-            "value",
-            "memory"
-        ],
+        "id": 203,
+        "type": "reasoning_math",
+        "difficulty": "hard",
+        "system_prompt": "You are a mathematical reasoning assistant. Show your step-by-step work clearly.",
+        "user_prompt": "In a regular icosahedron (20 faces, 12 vertices, 30 edges), how many distinct planes can be formed by choosing 3 vertices such that all 3 vertices are mutually connected by edges of the icosahedron?",
+        "expected_keywords": ["20", "face", "triangle", "equilateral", "vertex"],
+        "verification": "numeric_exact",
+        "answer": 20,
         "code_reference": null
     },
     {
-        "id": 12,
-        "type": "qa",
-        "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
-        "user_prompt": "What is the purpose of a virtual environment (venv) in Python, and why is it recommended?",
-        "expected_keywords": [
-            "dependency",
-            "isolation",
-            "package",
-            "conflict"
-        ],
+        "id": 204,
+        "type": "reasoning_math",
+        "difficulty": "medium",
+        "system_prompt": "You are a mathematical reasoning assistant. Show your step-by-step work clearly.",
+        "user_prompt": "Consider the integral ∫₀¹ x².eˣ dx. What is its exact value? Express your answer in terms of e.",
+        "expected_keywords": ["2-e", "integration", "parts", "e", "derivative"],
+        "verification": "numeric_range",
+        "answer_range": [0, 1],
         "code_reference": null
     },
     {
-        "id": 13,
-        "type": "reasoning",
+        "id": 205,
+        "type": "reasoning_math",
+        "difficulty": "hard",
+        "system_prompt": "You are a mathematical reasoning assistant. Show your step-by-step work clearly.",
+        "user_prompt": "Let S be the set of all subsets of {1, 2, 3, ..., 20} that do not contain any two consecutive integers. What is |S|? Explain your reasoning.",
+        "expected_keywords": ["17711", "Fibonacci", "recurrence", "subset", "consecutive"],
+        "verification": "numeric_exact",
+        "answer": 17711,
+        "code_reference": null
+    },
+    {
+        "id": 301,
+        "type": "reasoning_science",
+        "difficulty": "hard",
+        "system_prompt": "You are a scientific reasoning assistant. Provide accurate, expert-level explanations.",
+        "user_prompt": "In a hydrogen atom, what is the ratio of the de Broglie wavelength of an electron in the n=2 state to that in the n=1 state? Derive your answer from the Bohr model.",
+        "expected_keywords": ["2", "momentum", "velocity", "radius", "wavelength"],
+        "verification": "numeric_exact",
+        "answer": 2,
+        "code_reference": null
+    },
+    {
+        "id": 302,
+        "type": "reasoning_science",
+        "difficulty": "hard",
+        "system_prompt": "You are a scientific reasoning assistant. Provide accurate, expert-level explanations.",
+        "user_prompt": "In organic chemistry, why does SN2 reaction proceed with inversion of configuration (Walden inversion)? Explain the mechanism and orbital considerations.",
+        "expected_keywords": ["backside", "attack", "orbital", "nucleophile", "transition"],
+        "verification": "text",
+        "code_reference": null
+    },
+    {
+        "id": 303,
+        "type": "reasoning_science",
+        "difficulty": "hard",
+        "system_prompt": "You are a scientific reasoning assistant. Provide accurate, expert-level explanations.",
+        "user_prompt": "According to the second law of thermodynamics, why is it impossible to build a heat engine with 100% efficiency? Derive the Carnot efficiency limit and explain its physical significance.",
+        "expected_keywords": ["entropy", "carnot", "temperature", "reservoir", "irreversible"],
+        "verification": "text",
+        "code_reference": null
+    },
+    {
+        "id": 304,
+        "type": "reasoning_science",
+        "difficulty": "hard",
+        "system_prompt": "You are a scientific reasoning assistant. Provide accurate, expert-level explanations.",
+        "user_prompt": "In quantum mechanics, what is the Heisenberg uncertainty principle? Write the mathematical inequality for position-momentum uncertainty and explain what it implies about the nature of measurement at the quantum scale.",
+        "expected_keywords": ["hbar", "delta", "product", "fundamental", "measurement"],
+        "verification": "text",
+        "code_reference": null
+    },
+    {
+        "id": 305,
+        "type": "reasoning_science",
+        "difficulty": "hard",
+        "system_prompt": "You are a scientific reasoning assistant. Provide accurate, expert-level explanations.",
+        "user_prompt": "Explain the mechanism of enzyme catalysis using the transition state theory. Why are enzymes more effective at stabilizing the transition state rather than the substrate or product? Include the concept of induced fit.",
+        "expected_keywords": ["transition", "activation", "energy", "stabilize", "induced"],
+        "verification": "text",
+        "code_reference": null
+    },
+    {
+        "id": 401,
+        "type": "instruction_following",
+        "difficulty": "medium",
+        "system_prompt": "You are a precise coding assistant. Follow ALL constraints exactly.",
+        "user_prompt": "Write a Python function `factorial(n)` that computes the factorial of n. Constraints: (1) Use exactly 3 lines of code (excluding docstring), (2) Include no comments, (3) Use recursion, (4) No imports allowed, (5) Must handle n=0 returning 1.",
+        "constraints": [
+            {"type": "max_lines", "value": 3},
+            {"type": "no_comments", "value": true},
+            {"type": "uses_recursion", "value": true},
+            {"type": "no_imports", "value": true},
+            {"type": "handles_zero", "value": true}
+        ],
+        "expected_keywords": ["def", "return", "n-1", "factorial", "0"],
+        "code_reference": null
+    },
+    {
+        "id": 402,
+        "type": "instruction_following",
+        "difficulty": "medium",
+        "system_prompt": "You are a precise coding assistant. Follow ALL constraints exactly.",
+        "user_prompt": "Write a Python function `is_prime(n)` that checks if n is prime. Constraints: (1) Must be a single expression (lambda or one-liner), (2) No loops allowed (no for, no while), (3) Must use only built-in functions, (4) Must return True/False.",
+        "constraints": [
+            {"type": "single_expression", "value": true},
+            {"type": "no_loops", "value": true},
+            {"type": "builtins_only", "value": true},
+            {"type": "returns_boolean", "value": true}
+        ],
+        "expected_keywords": ["range", "modulo", "divide", "prime", "True"],
+        "code_reference": null
+    },
+    {
+        "id": 403,
+        "type": "instruction_following",
+        "difficulty": "hard",
+        "system_prompt": "You are a precise coding assistant. Follow ALL constraints exactly.",
+        "user_prompt": "Write a Python function `matrix_multiply(a, b)` that multiplies two 2D matrices. Constraints: (1) Must not use numpy or any external library, (2) Must use exactly 3 nested loops (no list comprehensions), (3) Must include input validation for dimensions, (4) Must have a docstring explaining time complexity.",
+        "constraints": [
+            {"type": "no_numpy", "value": true},
+            {"type": "exactly_3_loops", "value": true},
+            {"type": "no_comprehensions", "value": true},
+            {"type": "input_validation", "value": true},
+            {"type": "docstring_complexity", "value": true}
+        ],
+        "expected_keywords": ["def", "rows", "cols", "append", "O(n³)"],
+        "code_reference": null
+    },
+    {
+        "id": 404,
+        "type": "instruction_following",
+        "difficulty": "hard",
+        "system_prompt": "You are a precise coding assistant. Follow ALL constraints exactly.",
+        "user_prompt": "Write a Python function `json_to_csv(data: list[dict]) -> str` that converts a list of dictionaries to CSV format. Constraints: (1) Must handle nested dictionaries by flattening with dot notation, (2) Must handle missing keys by using empty string, (3) Must handle lists within values by joining with semicolons, (4) Must include proper CSV escaping for values containing commas, (5) No csv module imports.",
+        "constraints": [
+            {"type": "handle_nested", "value": true},
+            {"type": "handle_missing", "value": true},
+            {"type": "handle_lists", "value": true},
+            {"type": "csv_escaping", "value": true},
+            {"type": "no_csv_module", "value": true}
+        ],
+        "expected_keywords": ["join", "escape", "quote", "delimiter", "flatten"],
+        "code_reference": null
+    },
+    {
+        "id": 405,
+        "type": "instruction_following",
+        "difficulty": "medium",
+        "system_prompt": "You are a precise coding assistant. Follow ALL constraints exactly.",
+        "user_prompt": "Write a Python function `count_words(text: str) -> dict` that counts word frequencies. Constraints: (1) Case-insensitive, (2) Remove all punctuation, (3) Return sorted by frequency descending, (4) Must use collections.Counter or similar, (5) Must include type hints.",
+        "constraints": [
+            {"type": "case_insensitive", "value": true},
+            {"type": "remove_punctuation", "value": true},
+            {"type": "sorted_descending", "value": true},
+            {"type": "uses_counter", "value": true},
+            {"type": "type_hints", "value": true}
+        ],
+        "expected_keywords": ["Counter", "lower", "split", "sorted", "items"],
+        "code_reference": null
+    },
+    {
+        "id": 501,
+        "type": "code_refactoring",
+        "difficulty": "medium",
+        "system_prompt": "You are a code quality expert. Improve the following code while maintaining its functionality.",
+        "user_prompt": "Refactor the following code to improve readability, add proper error handling, and optimize performance. Explain each change:\n\n```python\ndef process_data(data):\n    result = []\n    for i in range(len(data)):\n        if data[i] > 0:\n            result.append(data[i] * 2)\n    return result\n```",
+        "expected_keywords": ["list comprehension", "filter", "error", "type hint", "docstring"],
+        "code_reference": null
+    },
+    {
+        "id": 502,
+        "type": "code_refactoring",
+        "difficulty": "hard",
+        "system_prompt": "You are a code quality expert. Improve the following code while maintaining its functionality.",
+        "user_prompt": "Refactor the following code to follow SOLID principles, add proper error handling, and improve testability. Explain each change:\n\n```python\nclass DataProcessor:\n    def __init__(self):\n        self.data = []\n    \n    def load(self, filename):\n        f = open(filename, 'r')\n        self.data = f.readlines()\n        f.close()\n    \n    def process(self):\n        result = []\n        for line in self.data:\n            parts = line.split(',')\n            if len(parts) == 3:\n                result.append({'name': parts[0], 'age': int(parts[1]), 'city': parts[2]})\n        return result\n    \n    def save(self, filename):\n        f = open(filename, 'w')\n        for item in self.process():\n            f.write(f\"{item['name']},{item['age']},{item['city']}\\n\")\n        f.close()\n```",
+        "expected_keywords": ["context manager", "with", "exception", "typing", "dataclass"],
+        "code_reference": null
+    },
+    {
+        "id": 503,
+        "type": "code_refactoring",
+        "difficulty": "hard",
+        "system_prompt": "You are a code quality expert. Improve the following code while maintaining its functionality.",
+        "user_prompt": "Refactor the following recursive function to use memoization. Explain the approach and time complexity improvement:\n\n```python\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n```",
+        "expected_keywords": ["memo", "cache", "lru_cache", "dict", "O(n)"],
+        "code_reference": null
+    },
+    {
+        "id": 601,
+        "type": "code_debug",
+        "difficulty": "medium",
+        "system_prompt": "You are a debugging expert. Find and fix all bugs in the following code.",
+        "user_prompt": "Find ALL bugs in the following binary search implementation and provide the corrected version:\n\n```python\ndef binary_search(arr, target):\n    left, right = 0, len(arr)\n    while left < right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            right = mid\n        else:\n            left = mid\n    return -1\n```",
+        "expected_keywords": ["off-by-one", "right", "len-1", "mid+1", "mid-1"],
+        "code_reference": null
+    },
+    {
+        "id": 602,
+        "type": "code_debug",
+        "difficulty": "hard",
+        "system_prompt": "You are a debugging expert. Find and fix all bugs in the following code.",
+        "user_prompt": "Find ALL bugs in the following quicksort implementation and provide the corrected version:\n\n```python\ndef quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)\n\ndef quicksort_inplace(arr, low, high):\n    if low < high:\n        pi = partition(arr, low, high)\n        quicksort_inplace(arr, low, pi - 1)\n        quicksort_inplace(arr, pi + 1, high)\n\ndef partition(arr, low, high):\n    pivot = arr[high]\n    i = low - 1\n    for j in range(low, high):\n        if arr[j] < pivot:\n            i += 1\n            arr[i], arr[j] = arr[j], arr[i]\n    arr[i + 1], arr[high] = arr[high], arr[i + 1]\n    return i\n```",
+        "expected_keywords": ["pivot", "equal", "partition", "index", "in-place"],
+        "code_reference": null
+    },
+    {
+        "id": 603,
+        "type": "code_debug",
+        "difficulty": "hard",
+        "system_prompt": "You are a debugging expert. Find and fix all bugs in the following code.",
+        "user_prompt": "Find ALL bugs in the following implementation of the LRU Cache and provide the corrected version:\n\n```python\nclass LRUCache:\n    def __init__(self, capacity: int):\n        self.capacity = capacity\n        self.cache = {}\n    \n    def get(self, key: int) -> int:\n        if key in self.cache:\n            return self.cache[key]\n        return -1\n    \n    def put(self, key: int, value: int) -> null:\n        if key in self.cache:\n            self.cache[key] = value\n        else:\n            if len(self.cache) >= self.capacity:\n                self.cache.pop()\n            self.cache[key] = value\n```",
+        "expected_keywords": ["OrderedDict", "move_to_end", "popitem", "LRU", "access"],
+        "code_reference": null
+    },
+    {
+        "id": 701,
+        "type": "reasoning_logic",
+        "difficulty": "hard",
         "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
-        "user_prompt": "If all cats are animals, and some animals are pets, can we conclude that some cats are pets? Explain your reasoning step by step.",
-        "expected_keywords": [
-            "no",
-            "not necessarily",
-            "cannot conclude",
-            "invalid"
-        ],
+        "user_prompt": "There are 3 switches in a room, each controlling one of 3 light bulbs in a separate room. You can only enter the bulb room ONCE. How can you determine which switch controls which bulb? Explain your complete strategy.",
+        "expected_keywords": ["heat", "warm", "off", "on", "bulb"],
         "code_reference": null
     },
     {
-        "id": 14,
-        "type": "reasoning",
+        "id": 702,
+        "type": "reasoning_logic",
+        "difficulty": "hard",
         "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
-        "user_prompt": "A train leaves Station A at 60 mph heading east. One hour later, a second train leaves Station A at 90 mph heading east. How long after the second train leaves will it catch up to the first train?",
-        "expected_keywords": [
-            "2",
-            "hours",
-            "catch",
-            "distance",
-            "equation"
-        ],
+        "user_prompt": "You have 8 identical-looking coins, but one is counterfeit and slightly heavier than the others. You have a balance scale. What is the minimum number of weighings needed to guarantee finding the counterfeit coin? Show your strategy for the general case of n coins.",
+        "expected_keywords": ["3", "weighing", "log3", "divide", "heavier"],
         "code_reference": null
     },
     {
-        "id": 15,
-        "type": "reasoning",
+        "id": 703,
+        "type": "reasoning_logic",
+        "difficulty": "hard",
         "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
-        "user_prompt": "If it rains, the ground is wet. The ground is wet. Can we conclude that it rained? Explain why or why not using logical reasoning.",
-        "expected_keywords": [
-            "no",
-            "not necessarily",
-            "cannot conclude",
-            "affirming",
-            "consequent"
-        ],
+        "user_prompt": "In a room there are 3 light bulbs. Outside the room are 3 switches, each controlling exactly one bulb. You cannot see the bulbs from the switches. You can flip switches as much as you want, but you can only enter the room ONCE. How do you determine which switch controls which bulb? Now extend: what if there are n switches and n bulbs?",
+        "expected_keywords": ["heat", "warm", "temperature", "binary", "state"],
+        "code_reference": null
+    },
+    {
+        "id": 704,
+        "type": "reasoning_logic",
+        "difficulty": "hard",
+        "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
+        "user_prompt": "You have a 5-liter jug and a 3-liter jug, and an unlimited water supply. How do you measure exactly 4 liters? Provide the step-by-step procedure. Now generalize: given jugs of capacity a and b, when is it possible to measure exactly c liters?",
+        "expected_keywords": ["fill", "pour", "empty", "euclidean", "gcd"],
+        "code_reference": null
+    },
+    {
+        "id": 705,
+        "type": "reasoning_logic",
+        "difficulty": "hard",
+        "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
+        "user_prompt": "A census taker asks a woman about her children's ages. She says: 'I have three children. The product of their ages is 72. The sum of their ages is my house number.' The census taker looks at the house number and says he needs more information. She says: 'My oldest child plays piano.' Now he knows. What are the ages? Explain the logical deduction.",
+        "expected_keywords": ["72", "sum", "oldest", "ambiguous", "unique"],
+        "code_reference": null
+    },
+    {
+        "id": 801,
+        "type": "qa_knowledge",
+        "difficulty": "medium",
+        "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
+        "user_prompt": "What is the difference between asyncio.run() and asyncio.get_event_loop().run_until_complete() in Python? When would you use each?",
+        "expected_keywords": ["event loop", "context manager", "running", "deprecated", "asyncio.run"],
+        "code_reference": null
+    },
+    {
+        "id": 802,
+        "type": "qa_knowledge",
+        "difficulty": "medium",
+        "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
+        "user_prompt": "Explain the GIL (Global Interpreter Lock) in CPython. What are its implications for multi-threaded programs? What are the main alternatives for achieving true parallelism in Python?",
+        "expected_keywords": ["GIL", "thread", "multiprocessing", "parallel", "interpreter"],
+        "code_reference": null
+    },
+    {
+        "id": 803,
+        "type": "qa_knowledge",
+        "difficulty": "medium",
+        "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
+        "user_prompt": "What is the difference between @staticmethod, @classmethod, and instance methods in Python? When should each be used? Provide a brief example for each.",
+        "expected_keywords": ["self", "cls", "decorator", "instance", "class"],
+        "code_reference": null
+    },
+    {
+        "id": 804,
+        "type": "qa_knowledge",
+        "difficulty": "medium",
+        "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
+        "user_prompt": "Explain how Python's descriptor protocol works. How do properties, methods, and class methods use descriptors? What is the difference between data and non-data descriptors?",
+        "expected_keywords": ["__get__", "__set__", "__delete__", "property", "descriptor"],
+        "code_reference": null
+    },
+    {
+        "id": 805,
+        "type": "qa_knowledge",
+        "difficulty": "hard",
+        "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
+        "user_prompt": "Compare and contrast the following concurrency models: (1) Multi-processing, (2) Multi-threading with GIL, (3) asyncio/coroutines, (4) Process pools. For each, discuss: memory model, communication mechanism, scalability, and appropriate use cases.",
+        "expected_keywords": ["memory", "communication", "GIL", "coroutine", "scalability"],
         "code_reference": null
     }
 ]

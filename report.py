@@ -99,17 +99,26 @@ def generate_report(
 
             # Per-Run Task Breakdown
             lines.append("#### Task Breakdown\n")
-            lines.append("| Task ID | Type | Score | Matched Keywords |")
-            lines.append("|---------|------|-------|------------------|")
+            lines.append("| Task ID | Type | Difficulty | Score | Matched Keywords |")
+            lines.append("|---------|------|------------|-------|------------------|")
 
             for r in run_results:
                 task_id = r.get("task_id", "?")
                 task_type = r.get("task_type", "unknown")
+                difficulty = r.get("difficulty", "medium")
                 score = r.get("score")
                 score_str = f"{score:.4f}" if score is not None else "N/A"
                 matched = r.get("matched_keywords") or []
                 kw_str = ", ".join(matched) if matched else "\u2014"
-                lines.append(f"| {task_id} | {task_type} | {score_str} | {kw_str} |")
+                # Add extra scoring details for code_execute tasks
+                extra = ""
+                if r.get("test_score") is not None:
+                    extra = f" (test_patterns: {r['test_score']:.2f})"
+                if r.get("constraint_score") is not None:
+                    extra += f" (constraints: {r['constraint_score']:.2f})"
+                if r.get("numeric_score") is not None:
+                    extra += f" (numeric: {r['numeric_score']:.2f})"
+                lines.append(f"| {task_id} | {task_type} | {difficulty} | {score_str}{extra} | {kw_str} |")
 
             lines.append("")
 
