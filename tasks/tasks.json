@@ -70,32 +70,6 @@
         "code_reference": null
     },
     {
-        "id": 106,
-        "type": "code_execute",
-        "difficulty": "medium",
-        "system_prompt": "You are a Python programming expert. Write correct, efficient, well-tested code. Return only the code block.",
-        "user_prompt": "Implement a function `word_ladder(begin_word: str, end_word: str, word_list: list[str]) -> int` that returns the number of words in the shortest transformation sequence from begin_word to end_word, where each step changes exactly one letter. Return 0 if no such sequence exists. Include type hints and docstring.",
-        "test_cases": [
-            {"input": {"begin_word": "hit", "end_word": "cog", "word_list": ["hot", "dot", "dog", "lot", "log", "cog"]}, "expected": 4},
-            {"input": {"begin_word": "hit", "end_word": "cog", "word_list": ["hot", "dot", "dog", "lot", "log"]}, "expected": 0}
-        ],
-        "expected_keywords": ["queue", "deque", "visited", "set", "bfs"],
-        "code_reference": null
-    },
-    {
-        "id": 107,
-        "type": "code_execute",
-        "difficulty": "hard",
-        "system_prompt": "You are a Python programming expert. Write correct, efficient, well-tested code. Return only the code block.",
-        "user_prompt": "Implement a function `serialize_deserialize(root)` that implements binary tree serialization and deserialization. The serialize function converts a tree to a string, and deserialize converts it back. Use BFS level-order traversal. Include type hints and docstring.",
-        "test_cases": [
-            {"input": {"tree": [1, 2, 3, null, null, 4, 5]}, "expected": "[1,2,3,null,null,4,5]"},
-            {"input": {"tree": []}, "expected": "[]"}
-        ],
-        "expected_keywords": ["queue", "deque", "split", "join", "level"],
-        "code_reference": null
-    },
-    {
         "id": 108,
         "type": "code_execute",
         "difficulty": "medium",
@@ -154,17 +128,6 @@
         "code_reference": null
     },
     {
-        "id": 205,
-        "type": "reasoning_math",
-        "difficulty": "hard",
-        "system_prompt": "You are a mathematical reasoning assistant. Show your step-by-step work clearly.",
-        "user_prompt": "Let S be the set of all subsets of {1, 2, 3, ..., 20} that do not contain any two consecutive integers. What is |S|? Explain your reasoning.",
-        "expected_keywords": ["17711", "Fibonacci", "recurrence", "subset", "consecutive"],
-        "verification": "numeric_exact",
-        "answer": 17711,
-        "code_reference": null
-    },
-    {
         "id": 301,
         "type": "reasoning_science",
         "difficulty": "hard",
@@ -202,16 +165,6 @@
         "system_prompt": "You are a scientific reasoning assistant. Provide accurate, expert-level explanations.",
         "user_prompt": "In quantum mechanics, what is the Heisenberg uncertainty principle? Write the mathematical inequality for position-momentum uncertainty and explain what it implies about the nature of measurement at the quantum scale.",
         "expected_keywords": ["hbar", "delta", "product", "fundamental", "measurement"],
-        "verification": "text",
-        "code_reference": null
-    },
-    {
-        "id": 305,
-        "type": "reasoning_science",
-        "difficulty": "hard",
-        "system_prompt": "You are a scientific reasoning assistant. Provide accurate, expert-level explanations.",
-        "user_prompt": "Explain the mechanism of enzyme catalysis using the transition state theory. Why are enzymes more effective at stabilizing the transition state rather than the substrate or product? Include the concept of induced fit.",
-        "expected_keywords": ["transition", "activation", "energy", "stabilize", "induced"],
         "verification": "text",
         "code_reference": null
     },
@@ -263,22 +216,6 @@
         "code_reference": null
     },
     {
-        "id": 404,
-        "type": "instruction_following",
-        "difficulty": "hard",
-        "system_prompt": "You are a precise coding assistant. Follow ALL constraints exactly.",
-        "user_prompt": "Write a Python function `json_to_csv(data: list[dict]) -> str` that converts a list of dictionaries to CSV format. Constraints: (1) Must handle nested dictionaries by flattening with dot notation, (2) Must handle missing keys by using empty string, (3) Must handle lists within values by joining with semicolons, (4) Must include proper CSV escaping for values containing commas, (5) No csv module imports.",
-        "constraints": [
-            {"type": "handle_nested", "value": true},
-            {"type": "handle_missing", "value": true},
-            {"type": "handle_lists", "value": true},
-            {"type": "csv_escaping", "value": true},
-            {"type": "no_csv_module", "value": true}
-        ],
-        "expected_keywords": ["join", "escape", "quote", "delimiter", "flatten"],
-        "code_reference": null
-    },
-    {
         "id": 405,
         "type": "instruction_following",
         "difficulty": "medium",
@@ -313,15 +250,6 @@
         "code_reference": null
     },
     {
-        "id": 503,
-        "type": "code_refactoring",
-        "difficulty": "hard",
-        "system_prompt": "You are a code quality expert. Improve the following code while maintaining its functionality.",
-        "user_prompt": "Refactor the following recursive function to use memoization. Explain the approach and time complexity improvement:\n\n```python\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n```",
-        "expected_keywords": ["memo", "cache", "lru_cache", "dict", "O(n)"],
-        "code_reference": null
-    },
-    {
         "id": 601,
         "type": "code_debug",
         "difficulty": "medium",
@@ -340,15 +268,6 @@
         "code_reference": null
     },
     {
-        "id": 603,
-        "type": "code_debug",
-        "difficulty": "hard",
-        "system_prompt": "You are a debugging expert. Find and fix all bugs in the following code.",
-        "user_prompt": "Find ALL bugs in the following implementation of the LRU Cache and provide the corrected version:\n\n```python\nclass LRUCache:\n    def __init__(self, capacity: int):\n        self.capacity = capacity\n        self.cache = {}\n    \n    def get(self, key: int) -> int:\n        if key in self.cache:\n            return self.cache[key]\n        return -1\n    \n    def put(self, key: int, value: int) -> null:\n        if key in self.cache:\n            self.cache[key] = value\n        else:\n            if len(self.cache) >= self.capacity:\n                self.cache.pop()\n            self.cache[key] = value\n```",
-        "expected_keywords": ["OrderedDict", "move_to_end", "popitem", "LRU", "access"],
-        "code_reference": null
-    },
-    {
         "id": 701,
         "type": "reasoning_logic",
         "difficulty": "hard",
@@ -364,24 +283,6 @@
         "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
         "user_prompt": "You have 8 identical-looking coins, but one is counterfeit and slightly heavier than the others. You have a balance scale. What is the minimum number of weighings needed to guarantee finding the counterfeit coin? Show your strategy for the general case of n coins.",
         "expected_keywords": ["3", "weighing", "log3", "divide", "heavier"],
-        "code_reference": null
-    },
-    {
-        "id": 703,
-        "type": "reasoning_logic",
-        "difficulty": "hard",
-        "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
-        "user_prompt": "In a room there are 3 light bulbs. Outside the room are 3 switches, each controlling exactly one bulb. You cannot see the bulbs from the switches. You can flip switches as much as you want, but you can only enter the room ONCE. How do you determine which switch controls which bulb? Now extend: what if there are n switches and n bulbs?",
-        "expected_keywords": ["heat", "warm", "temperature", "binary", "state"],
-        "code_reference": null
-    },
-    {
-        "id": 704,
-        "type": "reasoning_logic",
-        "difficulty": "hard",
-        "system_prompt": "You are a logical reasoning assistant. Think step by step and provide clear reasoning.",
-        "user_prompt": "You have a 5-liter jug and a 3-liter jug, and an unlimited water supply. How do you measure exactly 4 liters? Provide the step-by-step procedure. Now generalize: given jugs of capacity a and b, when is it possible to measure exactly c liters?",
-        "expected_keywords": ["fill", "pour", "empty", "euclidean", "gcd"],
         "code_reference": null
     },
     {
@@ -427,15 +328,6 @@
         "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
         "user_prompt": "Explain how Python's descriptor protocol works. How do properties, methods, and class methods use descriptors? What is the difference between data and non-data descriptors?",
         "expected_keywords": ["__get__", "__set__", "__delete__", "property", "descriptor"],
-        "code_reference": null
-    },
-    {
-        "id": 805,
-        "type": "qa_knowledge",
-        "difficulty": "hard",
-        "system_prompt": "You are a knowledgeable assistant. Answer questions accurately and concisely.",
-        "user_prompt": "Compare and contrast the following concurrency models: (1) Multi-processing, (2) Multi-threading with GIL, (3) asyncio/coroutines, (4) Process pools. For each, discuss: memory model, communication mechanism, scalability, and appropriate use cases.",
-        "expected_keywords": ["memory", "communication", "GIL", "coroutine", "scalability"],
         "code_reference": null
     }
 ]
