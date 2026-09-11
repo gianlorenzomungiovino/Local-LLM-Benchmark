@@ -13,8 +13,8 @@ from llm_client import LLMClient
 from evaluator import score_results
 
 # Concurrency: sequential to avoid server overload
-# Per-request timeout: 60s (fast failure) vs global 300s (safety net)
-REQUEST_TIMEOUT = 120  # seconds per single request
+# Per-request timeout: 240s (fast failure) vs global 300s (safety net)
+REQUEST_TIMEOUT = 240  # seconds per single request
 
 
 class ProgressTracker:

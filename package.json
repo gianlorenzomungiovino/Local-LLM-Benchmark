@@ -1,0 +1,15 @@
+{
+  "name": "agent-bench-repo---gsd-pi",
+  "version": "1.0.0",
+  "description": "Benchmark CLI per testare modelli LLM esposti tramite il server [llama.cpp](https://github.com/ggerganov/llama.cpp) con API OpenAI-compatible.",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

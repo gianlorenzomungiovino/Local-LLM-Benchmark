@@ -42,4 +42,4 @@ coverage/
 .cache/
 tmp/
 results/
-
+configs/
