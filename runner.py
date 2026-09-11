@@ -14,7 +14,7 @@ from evaluator import score_results
 
 # Concurrency: sequential to avoid server overload
 # Per-request timeout: 240s (fast failure) vs global 300s (safety net)
-REQUEST_TIMEOUT = 240  # seconds per single request
+REQUEST_TIMEOUT = 300  # seconds per single request (5min, allows slower models)
 
 
 class ProgressTracker:

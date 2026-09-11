@@ -143,9 +143,9 @@ def test_full_pipeline_report_generation():
         # Step 4: Verify all expected sections are present
         for section in [
             "# Benchmark Results",
-            "## Task Breakdown",
-            "## Configuration",
-            "## Parameter Averages",
+            "Task Breakdown",
+            "Configuration",
+            "Parameter Averages",
             "## Ranking",
         ]:
             assert section in md, f"Missing section '{section}' in report"
@@ -176,7 +176,7 @@ def test_report_contains_all_task_types():
     in_breakdown = False
     data_rows = 0
     for line in lines:
-        if "| Task ID | Type | Score | Matched Keywords |" in line:
+        if "| Task ID | Type | Difficulty | Score | Matched Keywords |" in line:
             in_breakdown = True
             continue
         if in_breakdown:
@@ -184,7 +184,7 @@ def test_report_contains_all_task_types():
                 break
             if line.strip().startswith("|") and "---" not in line:
                 cells = [c.strip() for c in line.split("|") if c.strip()]
-                if len(cells) == 4:
+                if len(cells) == 5:
                     data_rows += 1
 
     assert data_rows == 3, f"Expected 3 task rows in breakdown, got {data_rows}"
@@ -299,7 +299,7 @@ def test_report_markdown_valid():
                 break  # any heading
             if not line.strip():
                 continue
-            if "| Task ID | Type | Score | Matched Keywords |" in line:
+            if "| Task ID | Type | Difficulty | Score | Matched Keywords |" in line:
                 header_found = True
                 continue
             if "|---" in line or "|---------" in line:
@@ -307,8 +307,8 @@ def test_report_markdown_valid():
                 continue
             if line.strip().startswith("|"):
                 cells = [c.strip() for c in line.split("|") if c.strip()]
-                assert len(cells) == 4, (
-                    f"Table row should have 4 cells, got {len(cells)}: {line}"
+                assert len(cells) == 5, (
+                    f"Table row should have 5 cells, got {len(cells)}: {line}"
                 )
                 data_rows += 1
 
@@ -548,9 +548,9 @@ def test_report_flag_content_sections(monkeypatch, tmp_path):
 
     # Verify all 4 required sections are present
     required_sections = [
-        "## Task Breakdown",
-        "## Configuration",
-        "## Parameter Averages",
+        "Task Breakdown",
+        "Configuration",
+        "Parameter Averages",
         "## Ranking",
     ]
     for section in required_sections:

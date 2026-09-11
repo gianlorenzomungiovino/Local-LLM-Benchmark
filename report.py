@@ -164,21 +164,32 @@ def generate_report(
 
         # --- Ranking ---
         lines.append("## Ranking\n")
-        lines.append("| Run | Average Score | Rank |")
-        lines.append("|-----|---------------|------|")
+        lines.append("| Run | Model | Average Score | Rank |")
+        lines.append("|-----|-------|---------------|------|")
 
-        run_avgs: list[tuple[str, float]] = []
+        run_id_to_number = {rid: i for i, rid in enumerate(run_list, 1)}
+
+        run_avgs: list[tuple[str, str, float]] = []
         for run_id in run_list:
             run_results = runs[run_id]
             run_scores = [r.get("score") for r in run_results if r.get("score") is not None]
             avg = _avg(run_scores)
-            run_avgs.append((run_id, avg))
 
-        run_avgs.sort(key=lambda x: x[1], reverse=True)
-        run_id_to_number = {rid: i for i, rid in enumerate(run_list, 1)}
-        for rank, (run_id, avg) in enumerate(run_avgs, 1):
+            # Extract model name from config (prefer the per-run config)
+            model_name = "unknown"
+            run_num = run_id_to_number.get(run_id, 0)
+            if isinstance(configs, list) and len(configs) >= run_num:
+                cfg = configs[run_num - 1]
+                model_name = cfg.get("model", "unknown")
+            elif isinstance(configs, dict):
+                model_name = configs.get("model", "unknown")
+
+            run_avgs.append((run_id, model_name, avg))
+
+        run_avgs.sort(key=lambda x: x[2], reverse=True)
+        for rank, (run_id, model_name, avg) in enumerate(run_avgs, 1):
             run_num = run_id_to_number.get(run_id, "?")
-            lines.append(f"| {run_num} | {avg:.4f} | {rank} |")
+            lines.append(f"| {run_num} | `{model_name}` | {avg:.4f} | {rank} |")
     else:
         lines.append("No results available.\n")
 

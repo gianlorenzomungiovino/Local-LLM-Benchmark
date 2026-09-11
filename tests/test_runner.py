@@ -75,10 +75,10 @@ class TestConfigLoading:
 class TestTaskIteration:
     """Verify _load_tasks and limit behavior."""
 
-    def test_load_tasks_returns_list_of_15(self):
+    def test_load_tasks_returns_list(self):
         tasks = runner._load_tasks()
         assert isinstance(tasks, list)
-        assert len(tasks) == 15
+        assert len(tasks) == 29
 
     def test_task_structure(self):
         tasks = runner._load_tasks()
@@ -91,9 +91,13 @@ class TestTaskIteration:
     def test_task_type_distribution(self):
         tasks = runner._load_tasks()
         types = [t["type"] for t in tasks]
-        assert types.count("code") == 8
-        assert types.count("qa") == 4
-        assert types.count("reasoning") == 3
+        # 8 categories with various counts totaling 29
+        assert types.count("code_execute") == 6
+        assert types.count("reasoning_math") == 4
+        assert types.count("reasoning_science") == 4
+        assert types.count("instruction_following") == 4
+        assert types.count("qa_knowledge") == 4
+        assert len(types) == 29
 
     def test_limit_truncates_tasks(self, tmp_path):
         """When limit is set, only the first N tasks are processed."""
