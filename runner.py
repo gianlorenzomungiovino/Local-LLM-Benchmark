@@ -9,12 +9,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from llm_client import LLMClient
+import httpx
+
+from llm_client import (
+    LLMClient,
+    OutputOverflow,
+    StallTimeout,
+    TaskDeadlineExceeded,
+)
 from evaluator import score_results
 
 # Concurrency: sequential to avoid server overload
-# Per-request timeout: 240s (fast failure) vs global 300s (safety net)
-REQUEST_TIMEOUT = 300  # seconds per single request (5min, allows slower models)
+# Completion is stream-driven ([DONE]); time gates are activity-based
+# (idle watchdog + adaptive per-task deadline, see LLMClient)
 
 
 class ProgressTracker:
@@ -106,28 +113,50 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
     tracker = ProgressTracker(len(tasks))
 
     # Load previous results to preserve historical runs
+    # Filter out runs with unrecognized task types (legacy runs are dropped)
+    current_task_types = {t["type"] for t in tasks}
     previous_results: list[dict] = []
+    previous_configs: list[dict] = []
     if _RESULTS_PATH.exists() and _RESULTS_PATH.stat().st_size > 0:
         with open(_RESULTS_PATH, "r", encoding="utf-8") as f:
             content = f.read().strip()
             if content:
-                previous_results = json.loads(content)
+                raw_data = json.loads(content)
+                if isinstance(raw_data, dict):
+                    # New format: dict with "results", "original_configs", "configs"
+                    raw_results = raw_data.get("results", [])
+                    # original_configs: saved by run.py BEFORE detection
+                    # configs: saved by runner.py AFTER detection (legacy, may be empty)
+                    # We prefer original_configs for the report (has all params).
+                    original_configs = raw_data.get("original_configs", [])
+                    legacy_configs = raw_data.get("configs", [])
+                    # Use original_configs if available; fall back to legacy
+                    previous_configs = original_configs if original_configs else legacy_configs
+                else:
+                    # Old format: flat list (no configs saved)
+                    raw_results = raw_data if isinstance(raw_data, list) else []
+                for r in raw_results:
+                    if r.get("task_type") in current_task_types:
+                        previous_results.append(r)
 
     async def _execute():
-        client = LLMClient(server_url, **config)
+        # Load timeout/guardrail params from separate file
+        timeout_path = _PROJECT_ROOT / "configs" / "timeout.json"
+        with open(timeout_path, "r", encoding="utf-8") as f:
+            timeout_config = json.load(f)
+        client = LLMClient(server_url, **config, timeout_config=timeout_config)
+        # Extract model name for embedding in results (survives config overwrites)
+        model_name = config.get("model") or "unknown"
         try:
             rome_now = datetime.now(ZoneInfo("Europe/Rome"))
 
             async def _run_task(task):
-                t0 = asyncio.get_event_loop().time()
-                response = await asyncio.wait_for(
-                    client.complete(
-                        system_prompt=task["system_prompt"],
-                        user_prompt=task["user_prompt"],
-                    ),
-                    timeout=REQUEST_TIMEOUT,
+                t0 = asyncio.get_running_loop().time()
+                response = await client.complete(
+                    system_prompt=task["system_prompt"],
+                    user_prompt=task["user_prompt"],
                 )
-                elapsed = asyncio.get_event_loop().time() - t0
+                elapsed = asyncio.get_running_loop().time() - t0
                 elapsed_map[task["id"]] = elapsed
                 return {
                     "run_id": run_id,
@@ -138,19 +167,17 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
                     "response": response,
                     "score": None,
                     "timestamp": rome_now.isoformat(),
+                    "model": model_name,
                 }
 
-            # Execute tasks sequentially with per-request timeout
-            # This prevents the last tasks from timing out due to server overload
+            # Execute tasks sequentially; each task ends when its stream
+            # completes, or when an activity gate trips (idle/output/deadline)
             for task in tasks:
                 try:
                     result = await _run_task(task)
                     results.append(result)
-                except asyncio.TimeoutError:
-                    print(
-                        f"[ERROR] Task {task['id']} timed out after {REQUEST_TIMEOUT}s",
-                        file=sys.stderr,
-                    )
+                except (StallTimeout, OutputOverflow, TaskDeadlineExceeded, httpx.HTTPError) as exc:
+                    print(f"[ERROR] Task {task['id']}: {exc}", file=sys.stderr)
                     results.append({
                         "run_id": run_id,
                         "task_id": task["id"],
@@ -160,7 +187,8 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
                         "response": "",
                         "score": 0.0,
                         "timestamp": rome_now.isoformat(),
-                        "error": f"Timeout after {REQUEST_TIMEOUT}s",
+                        "error": str(exc),
+                        "model": model_name,
                     })
         finally:
             await client.close()
@@ -183,21 +211,27 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
     tracker.print_summary()
 
     # Merge with previous results (preserve historical runs)
-    if isinstance(previous_results, dict):
-        # New format: dict with "results" and "configs"
-        prev_results_list = previous_results.get("results", [])
-        prev_configs = previous_results.get("configs", [])
-    else:
-        # Old format: flat list
-        prev_results_list = previous_results if isinstance(previous_results, list) else []
-        prev_configs = []
+    # previous_configs already contains original_configs if available,
+    # or falls back to legacy configs.
+    all_results = previous_results + results
+    all_configs = previous_configs + [config]
 
-    all_results = prev_results_list + results
-    all_configs = prev_configs + [config]
-
-    # Write results + configs
+    # Write results + configs (original_configs is already saved by run.py)
     _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    output = {"results": all_results, "configs": all_configs}
+
+    # Load original_configs from existing file (saved by run.py before detection)
+    original_configs: list[dict] = []
+    if _RESULTS_PATH.exists():
+        with open(_RESULTS_PATH, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+        if isinstance(existing, dict):
+            original_configs = existing.get("original_configs", [])
+
+    output = {
+        "results": all_results,
+        "original_configs": original_configs,
+        "configs": all_configs,
+    }
     with open(_RESULTS_PATH, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 

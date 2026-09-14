@@ -135,7 +135,51 @@ def main() -> None:
     if not Path(config_path).is_absolute():
         config_path = str(_PROJECT_ROOT / config_path)
 
-    # Load config, auto-detect model if not set
+    # Save the original config (before detection) to results.json.
+    # detect_and_populate_config overwrites run.json in-place, destroying
+    # the previous model name. We preserve it here so runner.py can
+    # include it in the configs array for the ranking report.
+    # This runs EVERY time so each run's original config is captured
+    # before detection modifies run.json.
+    # We save original configs in a separate key so runner.py can
+    # interleave them correctly with post-detection configs.
+    _RESULTS_DIR = _PROJECT_ROOT / "results"
+    _RESULTS_PATH = _RESULTS_DIR / "results.json"
+
+    # Load original config from disk (before detection)
+    with open(config_path, "r", encoding="utf-8") as f:
+        original_config = json.load(f)
+
+    if _RESULTS_PATH.exists():
+        with open(_RESULTS_PATH, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+        if isinstance(existing, dict):
+            # New format: append original config to original_configs
+            existing_originals = existing.get("original_configs", [])
+            existing_originals.append(original_config)
+            existing["original_configs"] = existing_originals
+            _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+            with open(_RESULTS_PATH, "w", encoding="utf-8") as f:
+                json.dump(existing, f, indent=2, ensure_ascii=False)
+        else:
+            # Old format: convert to new format, preserving results
+            old_results = existing if isinstance(existing, list) else []
+            _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+            with open(_RESULTS_PATH, "w", encoding="utf-8") as f:
+                json.dump(
+                    {"results": old_results, "original_configs": [original_config]},
+                    f, indent=2, ensure_ascii=False,
+                )
+    else:
+        # First ever run
+        _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(_RESULTS_PATH, "w", encoding="utf-8") as f:
+            json.dump(
+                {"results": [], "original_configs": [original_config]},
+                f, indent=2, ensure_ascii=False,
+            )
+
+    # Load config, auto-detect model if not set (this overwrites run.json)
     config, model_info = detect_and_populate_config(config_path, server_url)
 
     # Load tasks to count them

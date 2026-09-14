@@ -22,6 +22,18 @@ _fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
 _logger.addHandler(_fh)
 
 
+class StallTimeout(RuntimeError):
+    """Stream stalled: no chunks received for idle_timeout_s."""
+
+
+class OutputOverflow(RuntimeError):
+    """Response exceeded max_chars (runaway generation)."""
+
+
+class TaskDeadlineExceeded(RuntimeError):
+    """Task exceeded its adaptive per-task deadline."""
+
+
 class LLMClient:
     """Async-compatible HTTP client for llama.cpp /v1/chat/completions."""
 
@@ -54,9 +66,18 @@ class LLMClient:
             base_url: e.g. 'http://localhost:8080'
             **params: API parameters from configs/run.json
                       (temperature, top_k, top_p, min_p, repeat_penalty, presence_penalty)
+            timeout_config: dict from configs/timeout.json (idle_timeout_s, max_chars, etc.)
         """
         self.base_url = base_url.rstrip("/")
         self.params = params
+        # Timeout / guardrail params (separate file: configs/timeout.json)
+        tc = params.get("timeout_config", {})
+        self.idle_timeout = float(tc.get("idle_timeout_s", 30))
+        self.max_chars = int(tc.get("max_chars", 32000))
+        self.warmup_tokens = int(tc.get("warmup_tokens", 32))
+        self.deadline_factor = float(tc.get("deadline_factor", 2.5))
+        self.min_deadline = float(tc.get("min_deadline_s", 60))
+        self.fallback_deadline = float(tc.get("fallback_deadline_s", 300))
         self._client = httpx.AsyncClient(timeout=300.0)
 
     # ── public API ────────────────────────────────────────────────
@@ -66,7 +87,10 @@ class LLMClient:
         Send a chat completion request and return the response text.
 
         Uses streaming mode to work around llama.cpp returning empty
-        content in non-streaming responses.
+        content in non-streaming responses. Completion is stream-driven
+        ([DONE]); time gates are activity-based: idle watchdog (reset
+        on every chunk), output cap, and an adaptive per-task deadline
+        derived from observed token rate and n_predict.
 
         Args:
             system_prompt: System message content.
@@ -78,6 +102,9 @@ class LLMClient:
         Raises:
             RuntimeError: On invalid JSON response.
             httpx.HTTPError: On persistent network failure (after retry).
+            StallTimeout: No stream chunks for idle_timeout_s.
+            OutputOverflow: Response exceeded max_chars.
+            TaskDeadlineExceeded: Task exceeded its adaptive deadline.
         """
         payload = self._build_payload(system_prompt, user_prompt)
         payload["stream"] = True  # llama.cpp needs streaming for content
@@ -113,8 +140,8 @@ class LLMClient:
 
                     response.raise_for_status()
 
-                    # Parse streaming SSE chunks
-                    text = await self._extract_stream_text(response)
+                    # Consume SSE stream with activity-based gates
+                    text = await self._stream_with_gates(response)
                     _logger.info("Response received (%d chars)", len(text))
                     return text
 
@@ -194,23 +221,73 @@ class LLMClient:
 
         return payload
 
-    @staticmethod
-    async def _extract_stream_text(response) -> str:
-        """Extract text from streaming SSE response chunks."""
+    async def _stream_with_gates(self, response) -> str:
+        """Consume the SSE stream with activity-based completion gates.
+
+        Gates (all per-task, reset by activity, not by a static timer):
+            - idle watchdog: no chunks for idle_timeout_s -> StallTimeout
+            - output cap: more than max_chars -> OutputOverflow
+            - adaptive deadline: after warmup_tokens, deadline is frozen as
+              max(min_deadline_s, deadline_factor * n_predict / observed_rate);
+              if elapsed exceeds it -> TaskDeadlineExceeded
+            - [DONE] or stream end -> task complete (no timer involved)
+        """
+        loop = asyncio.get_running_loop()
+        t_start = loop.time()
+        t_first = None
+        n_tokens = 0
+        n_predict = self.params.get("n_predict")
+        deadline = self.fallback_deadline if n_predict is None else None
         full_text = ""
-        async for line in response.aiter_lines():
-            if line.startswith("data: "):
-                data_str = line[6:]
-                if data_str.strip() == "[DONE]":
-                    break
-                try:
-                    data = json.loads(data_str)
-                    delta = data.get("choices", [{}])[0].get("delta", {})
-                    content = delta.get("content", "")
-                    if content:
-                        full_text += content
-                except json.JSONDecodeError:
-                    continue
+
+        # Idle watchdog: each wait for the next chunk is capped at idle_timeout
+        aiter = response.aiter_lines()
+        while True:
+            try:
+                line = await asyncio.wait_for(aiter.__anext__(), timeout=self.idle_timeout)
+            except asyncio.TimeoutError:
+                _logger.error("Idle: no chunks for %.0fs - aborting task", self.idle_timeout)
+                raise StallTimeout(f"no chunks for {self.idle_timeout:.0f}s")
+            except (StopIteration, StopAsyncIteration):
+                break
+            now = loop.time()
+
+            if not line.startswith("data: "):
+                continue
+            data_str = line[6:]
+            if data_str.strip() == "[DONE]":
+                break
+
+            try:
+                data = json.loads(data_str)
+            except json.JSONDecodeError:
+                continue
+            delta = data.get("choices", [{}])[0].get("delta", {})
+            content = delta.get("content", "")
+            if not content:
+                continue
+
+            full_text += content
+            n_tokens += 1
+            if t_first is None:
+                t_first = now
+
+            # Adaptive deadline: freeze the estimate at warmup
+            if deadline is None and n_tokens == self.warmup_tokens and t_first < now:
+                rate = (n_tokens - 1) / (now - t_first)
+                deadline = max(self.min_deadline, self.deadline_factor * float(n_predict) / rate)
+                _logger.info(
+                    "Adaptive deadline: %.0fs (rate=%.1f tok/s, n_predict=%s)",
+                    deadline, rate, n_predict,
+                )
+
+            if deadline is not None and now - t_start > deadline:
+                _logger.error("Task exceeded adaptive deadline %.0fs - aborting", deadline)
+                raise TaskDeadlineExceeded(f"exceeded {deadline:.0f}s adaptive deadline")
+
+            if len(full_text) > self.max_chars:
+                _logger.error("Response exceeded %d chars - aborting", self.max_chars)
+                raise OutputOverflow(f"response exceeded {self.max_chars} chars")
         return full_text
 
     def _extract_text(data: dict) -> str:

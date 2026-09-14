@@ -30,6 +30,7 @@ def _avg(scores: list[float]) -> float:
 def generate_report(
     results: list[dict[str, Any]],
     configs: list[dict[str, Any]] | dict[str, Any] | None = None,
+    original_configs: list[dict[str, Any]] | None = None,
     output_path: str = "results/results.md",
 ) -> str:
     """Generate a human-readable markdown report from benchmark results.
@@ -79,14 +80,20 @@ def generate_report(
             lines.append("")
 
             # Per-run configuration
-            if isinstance(configs, list) and i <= len(configs):
-                run_config = configs[i - 1]
+            # Use original_configs (saved before detection) for the full param
+            # set. Fall back to configs (post-detection), then shared dict.
+            run_config = {}
+            if isinstance(original_configs, list) and i <= len(original_configs):
+                run_config = dict(original_configs[i - 1])  # shallow copy
+            elif isinstance(configs, list) and i <= len(configs):
+                run_config = dict(configs[i - 1])
             elif isinstance(configs, dict) and configs:
-                # Single shared config: only apply to the most recent run (last in list).
-                # Historical runs keep their own configs from results.json if available.
-                run_config = configs if i == len(run_list) else {}
-            else:
-                run_config = {}
+                run_config = dict(configs) if i == len(run_list) else {}
+
+            # Override model with the one from result entries (ground truth)
+            run_models = [r.get("model") for r in run_results if r.get("model")]
+            if run_models and run_models[0] != "unknown":
+                run_config["model"] = run_models[0]
 
             if run_config:
                 lines.append("#### Configuration\n")
@@ -175,14 +182,22 @@ def generate_report(
             run_scores = [r.get("score") for r in run_results if r.get("score") is not None]
             avg = _avg(run_scores)
 
-            # Extract model name from config (prefer the per-run config)
+            # Prefer model name from result entries (embedded at generation time,
+            # survives config file overwrites). Fall back to per-run config,
+            # then to shared config dict.
             model_name = "unknown"
-            run_num = run_id_to_number.get(run_id, 0)
-            if isinstance(configs, list) and len(configs) >= run_num:
-                cfg = configs[run_num - 1]
-                model_name = cfg.get("model", "unknown")
-            elif isinstance(configs, dict):
-                model_name = configs.get("model", "unknown")
+            # 1) Check result entries first (most reliable)
+            run_models = [r.get("model") for r in run_results if r.get("model")]
+            if run_models:
+                model_name = run_models[0]
+            else:
+                # 2) Fall back to per-run config
+                run_num = run_id_to_number.get(run_id, 0)
+                if isinstance(configs, list) and len(configs) >= run_num:
+                    cfg = configs[run_num - 1]
+                    model_name = cfg.get("model", "unknown")
+                elif isinstance(configs, dict):
+                    model_name = configs.get("model", "unknown")
 
             run_avgs.append((run_id, model_name, avg))
 
@@ -211,8 +226,8 @@ def generate_report_from_file(
 ) -> str:
     """Load results and per-run configs from results.json and generate a report.
 
-    If results.json contains a "configs" array (per-run configs), uses that.
-    Otherwise falls back to config_path for a shared config.
+    If results.json contains "original_configs" (saved before detection),
+    uses that for Configuration sections. Falls back to "configs" (post-detection).
     """
     with open(results_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -220,14 +235,15 @@ def generate_report_from_file(
     # Handle both old format (flat list) and new format (dict with results+configs)
     if isinstance(data, dict):
         results = data.get("results", [])
+        original_configs = data.get("original_configs", None)
         configs = data.get("configs", None)
     else:
         results = data
+        original_configs = None
         configs = None
 
-    # Fallback to config file if no per-run configs stored
-    if configs is None or configs == []:
-        with open(config_path, "r", encoding="utf-8") as f:
-            configs = json.load(f)
+    # No fallback to config file: the file may have been overwritten
+    # by a later run's detection, so its model name would be wrong
+    # for historical runs. If a run has no config, show "unknown".
 
-    return generate_report(results, configs, output_path)
+    return generate_report(results, configs, original_configs, output_path)
