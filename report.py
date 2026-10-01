@@ -66,6 +66,51 @@ def generate_report(
 
         lines.append(f"**{len(run_list)} run(s) recorded.**\n")
 
+        # Ground-truth model per run, taken from the result entries.
+        run_models_per_run: list[str | None] = [
+            next(
+                (r.get("model") for r in runs[rid] if r.get("model")),
+                None,
+            )
+            for rid in run_list
+        ]
+
+        def _pick_configs(pool: list[dict]) -> list[dict]:
+            """Pair config entries with runs, matching by model name.
+
+            The configs arrays grow on every run.py invocation, including
+            invocations that produced no results, so positional indexing is
+            unreliable when len(pool) != len(runs). Prefer the earliest unused
+            entry whose model matches the run's model.
+            """
+            picked: list[dict] = []
+            used: set[int] = set()
+            for _ in range(len(run_models_per_run)):
+                idx: int | None = None
+                model = run_models_per_run[len(picked)]
+                if model:
+                    idx = next(
+                        (
+                            j
+                            for j, cfg in enumerate(pool)
+                            if j not in used and cfg.get("model") == model
+                        ),
+                        None,
+                    )
+                if idx is None and len(pool) == len(run_models_per_run):
+                    # Same cardinality: the arrays are aligned by construction.
+                    idx = len(picked)
+                if idx is None:
+                    idx = next(
+                        (j for j in range(len(pool)) if j not in used), None
+                    )
+                if idx is None:
+                    picked.append({})
+                    continue
+                used.add(idx)
+                picked.append(dict(pool[idx]))
+            return picked
+
         # --- Per-Run: header + config + breakdown + averages (all nested) ---
         for i, run_id in enumerate(run_list, 1):
             run_results = runs[run_id]
@@ -83,17 +128,17 @@ def generate_report(
             # Use original_configs (saved before detection) for the full param
             # set. Fall back to configs (post-detection), then shared dict.
             run_config = {}
-            if isinstance(original_configs, list) and i <= len(original_configs):
-                run_config = dict(original_configs[i - 1])  # shallow copy
-            elif isinstance(configs, list) and i <= len(configs):
-                run_config = dict(configs[i - 1])
+            if isinstance(original_configs, list) and original_configs:
+                run_config = _pick_configs(original_configs)[i - 1]
+            elif isinstance(configs, list) and configs:
+                run_config = _pick_configs(configs)[i - 1]
             elif isinstance(configs, dict) and configs:
                 run_config = dict(configs) if i == len(run_list) else {}
 
             # Override model with the one from result entries (ground truth)
-            run_models = [r.get("model") for r in run_results if r.get("model")]
-            if run_models and run_models[0] != "unknown":
-                run_config["model"] = run_models[0]
+            models = [r.get("model") for r in run_results if r.get("model")]
+            if models and models[0] != "unknown":
+                run_config["model"] = models[0]
 
             if run_config:
                 lines.append("#### Configuration\n")
@@ -187,9 +232,9 @@ def generate_report(
             # then to shared config dict.
             model_name = "unknown"
             # 1) Check result entries first (most reliable)
-            run_models = [r.get("model") for r in run_results if r.get("model")]
-            if run_models:
-                model_name = run_models[0]
+            models = [r.get("model") for r in run_results if r.get("model")]
+            if models:
+                model_name = models[0]
             else:
                 # 2) Fall back to per-run config
                 run_num = run_id_to_number.get(run_id, 0)
@@ -247,3 +292,29 @@ def generate_report_from_file(
     # for historical runs. If a run has no config, show "unknown".
 
     return generate_report(results, configs, original_configs, output_path)
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(
+        description="Regenerate results/results.md from results/results.json",
+    )
+    parser.add_argument(
+        "--results",
+        default="results/results.json",
+        help="Path to the results JSON file",
+    )
+    parser.add_argument(
+        "--output",
+        default="results/results.md",
+        help="Path of the markdown report to write",
+    )
+    args = parser.parse_args()
+
+    markdown = generate_report_from_file(
+        results_path=args.results,
+        output_path=args.output,
+    )
+    print(f"Report written to {args.output} ({len(markdown)} chars)", file=sys.stderr)
