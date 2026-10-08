@@ -86,6 +86,26 @@ _RESULTS_DIR = _PROJECT_ROOT / "results"
 _RESULTS_PATH = _RESULTS_DIR / "results.json"
 
 
+def _save_partial_results(
+    all_results: list[dict],
+    original_configs: list[dict],
+    all_configs: list[dict],
+) -> None:
+    """Write current results state to results.json.
+
+    Called after each task so that an interruption (Ctrl+C, crash)
+    never loses already-completed work.
+    """
+    output = {
+        "results": all_results,
+        "original_configs": original_configs,
+        "configs": all_configs,
+    }
+    _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    with open(_RESULTS_PATH, "w", encoding="utf-8") as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+
+
 def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http://localhost:8080", limit: int | None = None) -> list[dict]:
     """Run all (or *limit*) benchmark tasks against the server and return results.
 
@@ -113,10 +133,11 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
     tracker = ProgressTracker(len(tasks))
 
     # Load previous results to preserve historical runs
-    # Filter out runs with unrecognized task types (legacy runs are dropped)
-    current_task_types = {t["type"] for t in tasks}
+    # Keep ALL previous results regardless of task type — historical data
+    # must never be silently dropped when tasks.json is restructured.
     previous_results: list[dict] = []
     previous_configs: list[dict] = []
+    original_configs: list[dict] = []
     if _RESULTS_PATH.exists() and _RESULTS_PATH.stat().st_size > 0:
         with open(_RESULTS_PATH, "r", encoding="utf-8") as f:
             content = f.read().strip()
@@ -135,9 +156,8 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
                 else:
                     # Old format: flat list (no configs saved)
                     raw_results = raw_data if isinstance(raw_data, list) else []
-                for r in raw_results:
-                    if r.get("task_type") in current_task_types:
-                        previous_results.append(r)
+                # Preserve ALL historical results (no type filter)
+                previous_results = list(raw_results)
 
     async def _execute():
         # Load timeout/guardrail params from separate file
@@ -190,10 +210,21 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
                         "error": str(exc),
                         "model": model_name,
                     })
+                # Incremental save: persist after each task so an
+                # interruption (Ctrl+C, crash) never loses completed work.
+                _save_partial_results(
+                    previous_results + results,
+                    original_configs,
+                    previous_configs + [config],
+                )
         finally:
             await client.close()
 
-    asyncio.run(_execute())
+    try:
+        asyncio.run(_execute())
+    except (KeyboardInterrupt, asyncio.CancelledError) as exc:
+        print(f"[WARN] Interrupted — saving {len(results)} partial results", file=sys.stderr)
+        # Results already saved incrementally; just score what we have.
 
     # Score results before writing
     score_results(results, tasks)
@@ -211,29 +242,11 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
     tracker.print_summary()
 
     # Merge with previous results (preserve historical runs)
-    # previous_configs already contains original_configs if available,
-    # or falls back to legacy configs.
     all_results = previous_results + results
     all_configs = previous_configs + [config]
 
-    # Write results + configs (original_configs is already saved by run.py)
-    _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Load original_configs from existing file (saved by run.py before detection)
-    original_configs: list[dict] = []
-    if _RESULTS_PATH.exists():
-        with open(_RESULTS_PATH, "r", encoding="utf-8") as f:
-            existing = json.load(f)
-        if isinstance(existing, dict):
-            original_configs = existing.get("original_configs", [])
-
-    output = {
-        "results": all_results,
-        "original_configs": original_configs,
-        "configs": all_configs,
-    }
-    with open(_RESULTS_PATH, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
+    # Final write (with scores) — overwrites the incremental saves
+    _save_partial_results(all_results, original_configs, all_configs)
 
     return all_results
 

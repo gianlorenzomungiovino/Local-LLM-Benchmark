@@ -43,3 +43,4 @@ coverage/
 tmp/
 results/
 configs/
+.pytest_cache/
