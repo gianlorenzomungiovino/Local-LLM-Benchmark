@@ -415,7 +415,7 @@ def test_report_flag_generates_file(monkeypatch, tmp_path):
     from unittest.mock import patch
 
     # Create a minimal config file
-    config = {"model": "llama3.1:8b", "temperature": 0.7, "top_k": 40, "top_p": 0.95}
+    config = {"baseUrl": "http://localhost:8080", "models": [{"id": "llama3.1:8b"}]}
     config_path = tmp_path / "run.json"
     config_path.write_text(json.dumps(config), encoding="utf-8")
 
@@ -481,10 +481,8 @@ def test_report_flag_content_sections(monkeypatch, tmp_path):
 
     # Create a minimal config file
     config = {
-        "model": "llama3.1:8b",
-        "temperature": 0.7,
-        "top_k": 40,
-        "top_p": 0.95,
+        "baseUrl": "http://localhost:8080",
+        "models": [{"id": "llama3.1:8b"}],
     }
     config_path = tmp_path / "run.json"
     config_path.write_text(json.dumps(config), encoding="utf-8")
@@ -557,7 +555,7 @@ def test_report_flag_content_sections(monkeypatch, tmp_path):
         assert section in content, f"Missing section '{section}' in generated report"
 
     # Verify: config parameters appear in Configuration section
-    for key in config:
+    for key in ("model", "baseUrl"):
         assert key in content, f"Config key '{key}' not found in report"
 
     # Verify: all task types appear in Task Breakdown
@@ -580,7 +578,7 @@ def test_no_report_flag_no_file(monkeypatch, tmp_path):
     from unittest.mock import patch
 
     # Create a minimal config file
-    config = {"model": "llama3.1:8b", "temperature": 0.7, "top_k": 40, "top_p": 0.95}
+    config = {"baseUrl": "http://localhost:8080", "models": [{"id": "llama3.1:8b"}]}
     config_path = tmp_path / "run.json"
     config_path.write_text(json.dumps(config), encoding="utf-8")
 
@@ -622,120 +620,12 @@ def test_no_report_flag_no_file(monkeypatch, tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Test 10: detect_and_populate_config updates file when model is null
-# ---------------------------------------------------------------------------
-
-def test_detect_and_populate_config_updates_file(monkeypatch, tmp_path):
-    """When config['model'] is null, detect_and_populate_config queries the server
-    and writes the detected model ID back to the config file."""
-    from run import detect_and_populate_config
-
-    # Create a config with model=null
-    config = {
-        "model": None,
-        "temperature": 0.7,
-        "top_k": 40,
-        "top_p": 0.95,
-    }
-    config_path = tmp_path / "run.json"
-    config_path.write_text(json.dumps(config, indent=4), encoding="utf-8")
-
-    # Mock LLMClient.fetch_model_info to return a model ID
-    mock_client = MagicMock()
-    mock_client.fetch_model_info = AsyncMock(return_value={"id": "llama-3-8b-instruct", "n_ctx": 4096, "n_ctx_train": None, "n_embd": None, "n_params": None, "n_vocab": None, "size": None})
-
-    with patch("llm_client.LLMClient", return_value=mock_client):
-        result_config, detected = detect_and_populate_config(
-            str(config_path), "http://localhost:8080"
-        )
-
-    # Verify: config was updated with detected model
-    assert result_config["model"] == "llama-3-8b-instruct"
-    assert isinstance(detected, dict) and detected["id"] == "llama-3-8b-instruct"
-
-    # Verify: config file on disk was updated
-    disk_config = json.loads(config_path.read_text(encoding="utf-8"))
-    assert disk_config["model"] == "llama-3-8b-instruct"
-
-
-# ---------------------------------------------------------------------------
-# Test 11: detect_and_populate_config skips when model already set
-# ---------------------------------------------------------------------------
-
-def test_detect_and_populate_config_skips_when_model_set(monkeypatch, tmp_path):
-    """When config['model'] is already set, no server call is made and config
-    is returned unchanged."""
-    from run import detect_and_populate_config
-
-    config = {
-        "model": "llama-3-70b",
-        "temperature": 0.5,
-        "top_k": 20,
-    }
-    config_path = tmp_path / "run.json"
-    config_path.write_text(json.dumps(config, indent=4), encoding="utf-8")
-
-    mock_client = MagicMock()
-    mock_client.fetch_model_info = AsyncMock(return_value="should-not-be-called")
-
-    with patch("llm_client.LLMClient", return_value=mock_client) as MockLLMClient:
-        result_config, detected = detect_and_populate_config(
-            str(config_path), "http://localhost:8080"
-        )
-
-    # Verify: LLMClient was never instantiated
-    MockLLMClient.assert_not_called()
-
-    # Verify: config unchanged, no detected model
-    assert result_config["model"] == "llama-3-70b"
-    assert detected is None
-
-    # Verify: config file on disk unchanged
-    disk_config = json.loads(config_path.read_text(encoding="utf-8"))
-    assert disk_config["model"] == "llama-3-70b"
-
-
-# ---------------------------------------------------------------------------
-# Test 12: detect_and_populate_config handles error gracefully
-# ---------------------------------------------------------------------------
-
-def test_detect_and_populate_config_handles_error(monkeypatch, tmp_path):
-    """When fetch_model_info raises an error or returns None, config is
-    returned unchanged without crashing."""
-    from run import detect_and_populate_config
-
-    config = {
-        "model": None,
-        "temperature": 0.7,
-    }
-    config_path = tmp_path / "run.json"
-    config_path.write_text(json.dumps(config, indent=4), encoding="utf-8")
-
-    # Mock fetch_model_info to return None (server has no models)
-    mock_client = MagicMock()
-    mock_client.fetch_model_info = AsyncMock(return_value=None)
-
-    with patch("llm_client.LLMClient", return_value=mock_client):
-        result_config, detected = detect_and_populate_config(
-            str(config_path), "http://localhost:8080"
-        )
-
-    # Verify: config unchanged
-    assert result_config["model"] is None
-    assert detected is None
-
-    # Verify: config file on disk unchanged
-    disk_config = json.loads(config_path.read_text(encoding="utf-8"))
-    assert disk_config["model"] is None
-
-
-# ---------------------------------------------------------------------------
 # Test 13: banner shows detected model name
 # ---------------------------------------------------------------------------
 
 def test_banner_shows_detected_model(capsys):
-    """When detected_model is passed to _print_banner, the banner includes
-    'Model: {detected_model}' in its output."""
+    """When run_stamp carries a model id, the banner includes
+    'Model: {model}' in its output."""
     import sys
     from io import StringIO
     from run import _print_banner
@@ -747,10 +637,9 @@ def test_banner_shows_detected_model(capsys):
     try:
         _print_banner(
             task_count=10,
-            config={"temperature": 0.7},
-            server_url="http://localhost:8080",
+            run_stamp={"model": "llama-3-8b-instruct", "baseUrl": "http://localhost:8080"},
+            config_path="configs/models.json",
             limit=None,
-            detected_model="llama-3-8b-instruct",
         )
     finally:
         output = sys.stderr.getvalue()
@@ -765,7 +654,7 @@ def test_banner_shows_detected_model(capsys):
 # ---------------------------------------------------------------------------
 
 def test_banner_omits_model_when_none(capsys):
-    """When detected_model is None, the banner does NOT include a 'Model:' line."""
+    """When run_stamp carries no model id, the banner does NOT include a 'Model:' line."""
     import sys
     from io import StringIO
     from run import _print_banner
@@ -776,10 +665,9 @@ def test_banner_omits_model_when_none(capsys):
     try:
         _print_banner(
             task_count=5,
-            config={"temperature": 0.5},
-            server_url="http://localhost:8080",
+            run_stamp={"baseUrl": "http://localhost:8080"},
+            config_path="configs/models.json",
             limit=3,
-            detected_model=None,
         )
     finally:
         output = sys.stderr.getvalue()

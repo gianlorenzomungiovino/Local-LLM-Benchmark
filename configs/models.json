@@ -1,0 +1,36 @@
+{
+    "baseUrl": "http://127.0.0.1:8080/v1",
+    "apiKey": "dummy",
+    "api": "openai-completions",
+    "compat": {
+        "supportsReasoningEffort": true
+    },
+    "thinking_level": "medium",
+    "reasoning_budget": 8192,
+    "models": [
+        {
+            "id": "qwen3.8-flash-next-coder-iq1_m",
+            "name": "Qwen3.8-Flash-Next Coder",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 163840,
+            "maxTokens": 16384,
+            "thinkingLevelMap": {
+                "off": "none",
+                "minimal": "low",
+                "low": "low",
+                "medium": "medium",
+                "high": "xhigh",
+                "xhigh": "xhigh",
+                "max": "xhigh"
+            },
+            "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0
+            }
+        }
+    ],
+    "launch_config": "configs/run.json"
+}

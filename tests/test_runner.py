@@ -10,6 +10,12 @@ import pytest
 # Import the module under test
 import runner
 
+# Minimal valid models.json-shaped API config for run_benchmark tests
+_MOCK_API_CONFIG = {
+    "baseUrl": "http://localhost:8080/v1",
+    "models": [{"id": "test-model", "maxTokens": 128}],
+}
+
 
 # ── helpers ──────────────────────────────────────────────────────
 
@@ -105,7 +111,7 @@ class TestTaskIteration:
         results_dir = tmp_path / "results"
         results_path = results_dir / "results.json"
 
-        with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
+        with patch.object(runner, "_load_config", return_value=_MOCK_API_CONFIG), \
              patch.object(runner, "_load_tasks", return_value=[
                  {"id": 1, "type": "code", "system_prompt": "s", "user_prompt": "u"},
                  {"id": 2, "type": "qa", "system_prompt": "s", "user_prompt": "u"},
@@ -120,7 +126,6 @@ class TestTaskIteration:
 
             results = runner.run_benchmark(
                 config_path=str(config_path),
-                server_url="http://localhost:8080",
                 limit=2,
             )
 
@@ -133,7 +138,7 @@ class TestTaskIteration:
         results_dir = tmp_path / "results"
         results_path = results_dir / "results.json"
 
-        with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
+        with patch.object(runner, "_load_config", return_value=_MOCK_API_CONFIG), \
              patch.object(runner, "_load_tasks", return_value=[
                  {"id": i, "type": "code", "system_prompt": "s", "user_prompt": f"q{i}"}
                  for i in range(5)
@@ -147,7 +152,6 @@ class TestTaskIteration:
 
             results = runner.run_benchmark(
                 config_path=str(config_path),
-                server_url="http://localhost:8080",
             )
 
             assert len(results) == 5
@@ -165,7 +169,7 @@ class TestResultsWriting:
         results_dir = tmp_path / "results"
         results_path = results_dir / "results.json"
 
-        with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
+        with patch.object(runner, "_load_config", return_value=_MOCK_API_CONFIG), \
              patch.object(runner, "_load_tasks", return_value=[
                  {"id": 1, "type": "code", "system_prompt": "s", "user_prompt": "u"},
              ]), \
@@ -178,7 +182,6 @@ class TestResultsWriting:
 
             results = runner.run_benchmark(
                 config_path=str(config_path),
-                server_url="http://localhost:8080",
             )
 
             assert results_path.exists()
@@ -196,7 +199,7 @@ class TestResultsWriting:
         results_dir = tmp_path / "results"
         results_path = results_dir / "results.json"
 
-        with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
+        with patch.object(runner, "_load_config", return_value=_MOCK_API_CONFIG), \
              patch.object(runner, "_load_tasks", return_value=[
                  {"id": 42, "type": "qa", "system_prompt": "sys", "user_prompt": "usr"},
              ]), \
@@ -209,7 +212,6 @@ class TestResultsWriting:
 
             results = runner.run_benchmark(
                 config_path=str(config_path),
-                server_url="http://localhost:8080",
             )
 
             entry = results[0]
@@ -227,7 +229,7 @@ class TestResultsWriting:
         results_dir = tmp_path / "results"
         results_path = results_dir / "results.json"
 
-        with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
+        with patch.object(runner, "_load_config", return_value=_MOCK_API_CONFIG), \
              patch.object(runner, "_load_tasks", return_value=[
                  {"id": 1, "type": "qa", "system_prompt": "s", "user_prompt": "u", "expected_keywords": ["hello"]},
                  {"id": 2, "type": "code", "system_prompt": "s", "user_prompt": "u", "expected_keywords": ["def"]},
@@ -242,7 +244,6 @@ class TestResultsWriting:
 
             results = runner.run_benchmark(
                 config_path=str(config_path),
-                server_url="http://localhost:8080",
             )
 
             # All entries must have score populated
@@ -265,7 +266,7 @@ class TestResultsWriting:
         results_dir = tmp_path / "results"
         results_path = results_dir / "results.json"
 
-        with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
+        with patch.object(runner, "_load_config", return_value=_MOCK_API_CONFIG), \
              patch.object(runner, "_load_tasks", return_value=[
                  {"id": 1, "type": "code", "system_prompt": "s", "user_prompt": "u"},
              ]), \
@@ -279,14 +280,12 @@ class TestResultsWriting:
             # First run
             runner.run_benchmark(
                 config_path=str(config_path),
-                server_url="http://localhost:8080",
             )
             first_data = json.loads(results_path.read_text())
 
             # Second run — should overwrite, not append
             runner.run_benchmark(
                 config_path=str(config_path),
-                server_url="http://localhost:8080",
             )
             second_data = json.loads(results_path.read_text())
 
@@ -301,7 +300,7 @@ class TestResultsWriting:
         results_dir = tmp_path / "results"
         results_path = results_dir / "results.json"
 
-        with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
+        with patch.object(runner, "_load_config", return_value=_MOCK_API_CONFIG), \
              patch.object(runner, "_load_tasks", return_value=[
                  {"id": 1, "type": "code", "system_prompt": "s", "user_prompt": "u"},
              ]), \
@@ -314,7 +313,6 @@ class TestResultsWriting:
 
             result = runner.run_benchmark(
                 config_path=str(config_path),
-                server_url="http://localhost:8080",
             )
 
             assert isinstance(result, list)
@@ -325,7 +323,7 @@ class TestResultsWriting:
         config_path = _write_temp_config(tmp_path)
         results_dir = tmp_path / "results"
 
-        with patch.object(runner, "_load_config", return_value={"temperature": 0.7}), \
+        with patch.object(runner, "_load_config", return_value=_MOCK_API_CONFIG), \
              patch.object(runner, "_load_tasks", return_value=[
                  {"id": 1, "type": "code", "system_prompt": "s", "user_prompt": "u"},
              ]), \
@@ -339,7 +337,6 @@ class TestResultsWriting:
             with pytest.raises(Exception, match="server down"):
                 runner.run_benchmark(
                     config_path=str(config_path),
-                    server_url="http://localhost:8080",
                 )
 
             # close() should still be called

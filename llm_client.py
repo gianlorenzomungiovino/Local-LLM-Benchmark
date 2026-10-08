@@ -35,43 +35,44 @@ class TaskDeadlineExceeded(RuntimeError):
 
 
 class LLMClient:
-    """Async-compatible HTTP client for llama.cpp /v1/chat/completions."""
+    """Async-compatible HTTP client for an OpenAI-compatible local server.
 
-    # llama.cpp OpenAI-compatible parameter mapping
-    # llama.cpp OpenAI-compatible API parameter mapping
-    # All sampling parameters accepted by the server
-    _PARAM_MAP = {
-        "temperature": "temperature",
-        "top_k": "top_k",
-        "top_p": "top_p",
-        "min_p": "min_p",
-        "repeat_penalty": "repeat_penalty",
-        "presence_penalty": "presence_penalty",
-        "frequency_penalty": "frequency_penalty",
-        "mirostat": "mirostat",
-        "mirostat_tau": "mirostat_tau",
-        "mirostat_eta": "mirostat_eta",
-        "typical_p": "typical_p",
-        "penalty_last_n": "penalty_last_n",
-        "tfs_z": "tfs_z",
-        "num_keep": "num_keep",
-        "seed": "seed",
-        "n_predict": "n_predict",
-        "logit_bias": "logit_bias",
-    }
+    Configured from configs/models.json (see that file for the schema):
+    baseUrl, model id, capability metadata and the per-run choices
+    (thinking_level, reasoning_budget). Sampling parameters are NOT sent here —
+    the server is started manually by the user with its own flags.
+    """
 
-    def __init__(self, base_url: str, **params):
+    def __init__(self, api_config: dict, **kwargs):
         """
         Args:
-            base_url: e.g. 'http://localhost:8080'
-            **params: API parameters from configs/run.json
-                      (temperature, top_k, top_p, min_p, repeat_penalty, presence_penalty)
-            timeout_config: dict from configs/timeout.json (idle_timeout_s, max_chars, etc.)
+            api_config: Parsed contents of configs/models.json.
+            timeout_config: dict from configs/timeout.json, passed via kwargs.
+                          (idle_timeout_s, max_chars, warmup_tokens, deadline_factor,
+                           min_deadline_s, fallback_deadline_s)
+
+        Raises:
+            ValueError: If api_config has no baseUrl or no models entry.
         """
-        self.base_url = base_url.rstrip("/")
-        self.params = params
+        if not api_config.get("baseUrl"):
+            raise ValueError("api_config requires a baseUrl")
+        base = api_config["baseUrl"].rstrip("/")
+        # Accept both 'http://host:port' and 'http://host:port/v1' forms
+        self.base_url = base if base.endswith("/v1") else base + "/v1"
+        self.api_config = api_config
+        self.compat = api_config.get("compat", {}) or {}
+        self.thinking_level = api_config.get("thinking_level")
+        self.reasoning_budget = api_config.get("reasoning_budget")
+        models = api_config.get("models") or []
+        if not models:
+            raise ValueError("api_config requires at least one model entry")
+        model = models[0]
+        self.model_id = model.get("id")
+        self.thinking_map = model.get("thinkingLevelMap", {}) or {}
+        # Guardrails for the adaptive deadline (maxTokens = worst-case n_predict)
+        self.max_tokens = model.get("maxTokens")
         # Timeout / guardrail params (separate file: configs/timeout.json)
-        tc = params.get("timeout_config", {})
+        tc = kwargs.get("timeout_config", {}) or api_config.get("timeout_config", {})
         self.idle_timeout = float(tc.get("idle_timeout_s", 30))
         self.max_chars = int(tc.get("max_chars", 32000))
         self.warmup_tokens = int(tc.get("warmup_tokens", 32))
@@ -165,38 +166,6 @@ class LLMClient:
         """Close the underlying HTTP client."""
         await self._client.aclose()
 
-    async def fetch_model_info(self) -> dict | None:
-        """Query the llama.cpp server's /v1/models endpoint and return full model metadata.
-
-        Returns:
-            Dict with model metadata (id, n_ctx, n_params, n_vocab, etc.),
-            or None if no models found or on error.
-        """
-        try:
-            response = await self._client.get(f"{self.base_url}/v1/models")
-            response.raise_for_status()
-            data = response.json()
-            models = data.get("data", [])
-            if models:
-                meta = models[0].get("meta", {})
-                info = {
-                    "id": models[0].get("id"),
-                    "n_ctx": meta.get("n_ctx"),
-                    "n_ctx_train": meta.get("n_ctx_train"),
-                    "n_embd": meta.get("n_embd"),
-                    "n_params": meta.get("n_params"),
-                    "n_vocab": meta.get("n_vocab"),
-                    "size": meta.get("size"),
-                }
-                _logger.info("Auto-detected model: %s (ctx=%s, params=%s)",
-                           info["id"], info["n_ctx"], info["n_params"])
-                return info
-            _logger.debug("No models returned by /v1/models")
-            return None
-        except httpx.HTTPError as exc:
-            _logger.warning("Failed to fetch model info: %s", exc)
-            return None
-
     # ── internals ─────────────────────────────────────────────────
 
     def _build_payload(self, system_prompt: str, user_prompt: str) -> dict:
@@ -208,16 +177,17 @@ class LLMClient:
 
         payload = {"messages": messages, "stream": False}
 
-        # Add model if configured
-        model = self.params.get("model")
-        if model:
-            payload["model"] = model
+        payload["model"] = self.model_id
 
-        # Map config params to API parameters
-        for config_key, api_key in self._PARAM_MAP.items():
-            value = self.params.get(config_key)
-            if value is not None:
-                payload[api_key] = value
+        # Reasoning params: thinking_level resolved through the model's
+        # thinkingLevelMap, plus reasoning_budget. Sampling stays server-side
+        # (the user starts the server with its own flags).
+        if self.thinking_level and self.compat.get("supportsReasoningEffort"):
+            effort = self.thinking_map.get(self.thinking_level)
+            if effort:
+                payload["reasoning_effort"] = effort
+        if self.reasoning_budget is not None:
+            payload["reasoning_budget"] = self.reasoning_budget
 
         return payload
 
@@ -236,7 +206,8 @@ class LLMClient:
         t_start = loop.time()
         t_first = None
         n_tokens = 0
-        n_predict = self.params.get("n_predict")
+        # maxTokens (declared in models.json) plays the role of worst-case n_predict
+        n_predict = self.max_tokens
         deadline = self.fallback_deadline if n_predict is None else None
         full_text = ""
 

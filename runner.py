@@ -1,4 +1,4 @@
-"""Task runner — orchestrates benchmark execution against a llama.cpp server."""
+"""Task runner — orchestrates benchmark execution against a local OpenAI-compatible server."""
 
 import asyncio
 import json
@@ -106,19 +106,65 @@ def _save_partial_results(
         json.dump(output, f, indent=2, ensure_ascii=False)
 
 
-def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http://localhost:8080", limit: int | None = None) -> list[dict]:
+def _load_launch_recipe(api_config: dict) -> dict:
+    """Read the launch-recipe file (api_config['launch_config']) verbatim.
+
+    The recipe documents how the user started the server (engine flags,
+    any engine). It is never interpreted — only stamped for provenance.
+    Returns an empty dict if absent or unreadable.
+    """
+    path = api_config.get("launch_config")
+    if not path:
+        return {}
+    recipe_file = Path(path)
+    if not recipe_file.is_absolute():
+        recipe_file = _PROJECT_ROOT / recipe_file
+    try:
+        with open(recipe_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"[WARN] Launch recipe unreadable: {exc}", file=sys.stderr)
+        return {}
+
+
+def _build_run_stamp(api_config: dict) -> dict:
+    """Build the flat stamp recorded in results for this run.
+
+    Combines the launch recipe verbatim (provenance of the flags the
+    server was started with) plus the resolved API identity, reasoning
+    level and guardrails actually used by the run.
+    """
+    model = api_config["models"][0]
+    level = api_config.get("thinking_level")
+    effort = None
+    if api_config.get("compat", {}).get("supportsReasoningEffort"):
+        effort = (model.get("thinkingLevelMap") or {}).get(level)
+    stamp = dict(_load_launch_recipe(api_config))
+    stamp.update({
+        "model": model.get("id"),
+        "baseUrl": api_config["baseUrl"],
+        "thinking_level": level,
+        "reasoning_effort": effort,
+        "reasoning_budget": api_config.get("reasoning_budget"),
+        "n_ctx": model.get("contextWindow"),
+        "max_tokens": model.get("maxTokens"),
+    })
+    return stamp
+
+
+def run_benchmark(config_path: str = "configs/models.json", limit: int | None = None) -> list[dict]:
     """Run all (or *limit*) benchmark tasks against the server and return results.
 
     Args:
-        config_path: Path to JSON config (temperature, top_k, etc.).
-        server_url: llama.cpp server URL, e.g. 'http://localhost:8080'.
+        config_path: Path to models.json (baseUrl + model + per-run choices).
         limit: If set, run only the first N tasks (for debugging).
 
     Returns:
         List of result dicts written to results/results.json.
     """
-    # Load config
+    # Load API configuration (never rewritten at runtime)
     config = _load_config(config_path)
+    run_stamp = _build_run_stamp(config)
 
     # Load tasks
     tasks = _load_tasks()
@@ -164,9 +210,9 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
         timeout_path = _PROJECT_ROOT / "configs" / "timeout.json"
         with open(timeout_path, "r", encoding="utf-8") as f:
             timeout_config = json.load(f)
-        client = LLMClient(server_url, **config, timeout_config=timeout_config)
-        # Extract model name for embedding in results (survives config overwrites)
-        model_name = config.get("model") or "unknown"
+        client = LLMClient(config, timeout_config=timeout_config)
+        # Extract model name for embedding in results (single source: models.json)
+        model_name = config["models"][0]["id"]
         try:
             rome_now = datetime.now(ZoneInfo("Europe/Rome"))
 
@@ -215,7 +261,7 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
                 _save_partial_results(
                     previous_results + results,
                     original_configs,
-                    previous_configs + [config],
+                    previous_configs + [run_stamp],
                 )
         finally:
             await client.close()
@@ -243,7 +289,7 @@ def run_benchmark(config_path: str = "configs/run.json", server_url: str = "http
 
     # Merge with previous results (preserve historical runs)
     all_results = previous_results + results
-    all_configs = previous_configs + [config]
+    all_configs = previous_configs + [run_stamp]
 
     # Final write (with scores) — overwrites the incremental saves
     _save_partial_results(all_results, original_configs, all_configs)
