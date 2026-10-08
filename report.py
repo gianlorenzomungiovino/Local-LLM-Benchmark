@@ -9,6 +9,22 @@ from pathlib import Path
 from typing import Any
 
 
+def _format_config_value(value: Any, max_len: int = 160) -> str:
+    """Render a config value for a markdown table cell.
+
+    Nested structures (list/dict) are serialized as compact JSON; long values
+    are truncated (full values remain in results.json). Pipes are escaped so
+    cells cannot break the table layout.
+    """
+    if isinstance(value, (list, dict)):
+        s = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    else:
+        s = str(value)
+    if len(s) > max_len:
+        s = s[: max_len - 1] + "\u2026"
+    return s.replace("|", "\\|")
+
+
 def _format_timestamp(ts: str) -> str:
     """Convert an ISO timestamp to Europe/Rome display format."""
     try:
@@ -145,7 +161,7 @@ def generate_report(
                 lines.append("| Parameter | Value |")
                 lines.append("|-----------|-------|")
                 for key, value in run_config.items():
-                    display_value = str(value)
+                    display_value = _format_config_value(value)
                     lines.append(f"| {key} | `{display_value}` |")
                 lines.append("")
 
