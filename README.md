@@ -20,25 +20,47 @@ pip install -e .
 
 ## Configuration
 
-Edit `configs/run.json` with your server parameters. The JSON below is an **example** — the actual parameters depend on your model and inference engine.
+The tool **never starts the server**: you start it manually (with any engine), then configure the API connection in `configs/models.json`. That is the **only** file whose values reach the server API — one active configuration at a time, edited as needed.
 
 ```json
 {
-  "model": "your-model-name",
-  "temperature": 0.3,
-  "top_k": 20,
-  "top_p": 0.95,
-  "min_p": 0.0,
-  "repeat_penalty": 1.0,
-  "presence_penalty": 0.0,
-  "threads": 6,
-  "ctx_size": 57344,
-  "ngl": "all",
-  "flash_attn": "on"
+  "baseUrl": "http://127.0.0.1:8080/v1",
+  "apiKey": "dummy",
+  "api": "openai-completions",
+  "compat": { "supportsReasoningEffort": true },
+  "thinking_level": "medium",
+  "reasoning_budget": 8192,
+  "models": [
+    {
+      "id": "qwen3.8-flash-next-coder-iq1_m",
+      "name": "Qwen3.8-Flash-Next Coder",
+      "reasoning": true,
+      "input": ["text", "image"],
+      "contextWindow": 163840,
+      "maxTokens": 16384,
+      "thinkingLevelMap": {
+        "off": "none", "minimal": "low", "low": "low",
+        "medium": "medium", "high": "xhigh", "xhigh": "xhigh", "max": "xhigh"
+      }
+    }
+  ],
+  "launch_config": "configs/run.json"
 }
 ```
 
-The `model` field is optional: if omitted or `null`, the benchmark auto-detects it by querying `/v1/models` on the first run.
+- `baseUrl` — server URL **and port** (no hardcoded default anymore; accept `http://host:port` or `http://host:port/v1`)
+- `thinking_level` — resolved per request through the model's `thinkingLevelMap` into `reasoning_effort` (only if `compat.supportsReasoningEffort`)
+- `reasoning_budget` — sent as-is in the request
+- `maxTokens` — worst-case generation cap, used for the adaptive deadline
+- `launch_config` — path to the **launch recipe** file, see below
+
+### Launch recipes (`configs/*.json`)
+
+A recipe documents **how you started the server** (engine flags for llama.cpp, strata, etc.). The benchmark never interprets it: it copies its content verbatim into each run's history stamp, so every result in `results.md` is traceable to the exact flags that were in place. Write one recipe per model/engine configuration and keep them in `configs/`.
+
+### Guardrails (`configs/timeout.json`)
+
+Unchanged: `idle_timeout_s` (stream watchdog), `max_chars` (runaway output cap), and the adaptive deadline parameters (the deadline is derived from `maxTokens` and the observed token rate).
 
 ### Supported Inference Engines
 
@@ -74,40 +96,51 @@ This benchmark works with **any server implementing the OpenAI-compatible API** 
 | [**LiteLLM**](https://github.com/BerriAI/litellm) | Proxy unifying 100+ providers. Can front any of the above engines and expose a unified OpenAI-compatible API. |
 | [**Open WebUI**](https://github.com/open-webui/open-webui) | Chat interface (ChatGPT-like) that works with any of the engines above. |
 
-> **Tip:** Pick the engine that matches your hardware and workflow. For quick local testing: **Ollama** or **LM Studio**. For maximum parameter control: **llama.cpp**. For GPU throughput: **vLLM** or **SGLang**. All work with this benchmark — just point `--server` to the right URL.
+> **Tip:** Pick the engine that matches your hardware and workflow. For quick local testing: **Ollama** or **LM Studio**. For maximum parameter control: **llama.cpp**. For GPU throughput: **vLLM** or **SGLang**. All work with this benchmark — just set `baseUrl` in `configs/models.json` to the right URL.
 
-### Supported API Parameters
+### What the client sends per request
 
-The client maps the following config keys to the OpenAI-compatible API:
+The benchmark does **not** send sampling parameters — sampling belongs to the server, which you start with your own flags (recorded in the launch recipe). Per request the client sends only:
 
-`temperature`, `top_k`, `top_p`, `min_p`, `repeat_penalty`, `presence_penalty`, `frequency_penalty`, `mirostat`, `mirostat_tau`, `mirostat_eta`, `typical_p`, `penalty_last_n`, `tfs_z`, `num_keep`, `seed`, `n_predict`, `logit_bias`
+`messages` (system + user), `stream: true`, `model` (id from `models.json`), and — when declared — `reasoning_effort` (resolved via `thinkingLevelMap`) and `reasoning_budget`.
 
-Parameters not recognized by your specific server will be ignored by the server (not the client).
+### CLI usage
 
-## Commands
+```
+python run.py [--config configs/models.json] [--limit N] [--report]
+```
+
+| Flag | Meaning |
+|------|---------|
+| *(no flags)* | Run all tasks against the server declared in `configs/models.json` |
+| `--config <path>` | Use a different API config file (default: `configs/models.json`) |
+| `--limit <N>` | Run only the first N tasks (debugging) |
+| `--report` | Also generate `results/results.md` (rankings + per-run provenance) |
+
+> There is no `--server` flag anymore: the API URL, port, model and reasoning level all live in `configs/models.json`, one file to edit per configuration you test.
 
 ### Basic run
 
 ```bash
-python run.py --server http://localhost:8080
+python run.py
 ```
 
 ### With markdown report
 
 ```bash
-python run.py --server http://localhost:8080 --report
+python run.py --report
 ```
 
 ### Limited task set (debug)
 
 ```bash
-python run.py --server http://localhost:8080 --limit 3
+python run.py --limit 3
 ```
 
 ### Custom config
 
 ```bash
-python run.py --config configs/run.json --server http://localhost:8080 --report
+python run.py --config configs/models-gpu.json --report
 ```
 
 ## Output
@@ -179,9 +212,9 @@ runner.py           # Benchmark execution engine
 llm_client.py       # Async HTTP client for OpenAI-compatible servers
 evaluator.py        # Multi-dimensional scoring by task type
 report.py           # Markdown report generation
-configs/run.json    # Server and inference parameters
+configs/models.json # API connection + model capabilities + per-run choices (the only config sent to the server)
+configs/run.json    # Launch recipe: how the server was started (stamped verbatim, never interpreted)
 configs/timeout.json # Request timeouts and guardrails
 tasks/tasks.json    # 29 tasks in 8 categories
-benchmark_analysis_report.md  # Critical analysis of the benchmark
 tests/              # Unit and integration tests
 ```
