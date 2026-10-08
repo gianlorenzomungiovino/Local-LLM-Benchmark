@@ -435,38 +435,33 @@ def test_report_flag_generates_file(monkeypatch, tmp_path):
     results_path = tmp_path / "results.json"
     results_path.write_text(json.dumps(results), encoding="utf-8")
 
-    # Mock run_benchmark to return our sample results
-    # and patch sys.argv to simulate --report flag
-    project_root = StdPath(__file__).resolve().parent.parent
-    results_dir = project_root / "results"
-    results_dir.mkdir(exist_ok=True)
+    # Redirect results paths to tmp so the project's real results/ stays clean
+    import run as run_mod
+    import report as report_mod
+    real_generate = report_mod.generate_report_from_file
 
-    # Write results.json so generate_report_from_file() can read it
-    results_json_path = results_dir / "results.json"
+    results_json_path = tmp_path / "results.json"
     results_json_path.write_text(json.dumps(results), encoding="utf-8")
+    report_path = tmp_path / "results.md"
+
+    monkeypatch.setattr(run_mod, "_RESULTS_PATH", results_json_path)
+    monkeypatch.setattr(run_mod, "_RESULTS_DIR", tmp_path)
+    monkeypatch.setattr(
+        report_mod,
+        "generate_report_from_file",
+        lambda: real_generate(results_path=str(results_json_path), output_path=str(report_path)),
+    )
 
     with patch("run.run_benchmark", return_value=results):
-        # Patch sys.argv to simulate: python run.py --report
         monkeypatch.setattr(sys, "argv", ["run.py", "--report", "--config", str(config_path)])
-        # Patch sys.exit to prevent actual exit
         monkeypatch.setattr(sys, "exit", lambda code=None: None)
 
         from run import main
         main()
 
-    # Verify: results.md should be created in project's results/ dir
-    report_path = project_root / "results" / "results.md"
-    assert report_path.exists(), (
-        f"results.md was not created by --report flag"
-    )
-
-    # Verify: report content is valid markdown
+    assert report_path.exists(), "results.md was not created by --report flag"
     content = report_path.read_text(encoding="utf-8")
     assert "# Benchmark Results" in content
-
-    # Clean up the generated report and results.json
-    report_path.unlink(missing_ok=True)
-    results_json_path.unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -523,14 +518,22 @@ def test_report_flag_content_sections(monkeypatch, tmp_path):
     results_path = tmp_path / "results.json"
     results_path.write_text(json.dumps(results), encoding="utf-8")
 
-    # Mock run_benchmark and run main() with --report flag
-    project_root = StdPath(__file__).resolve().parent.parent
-    results_dir = project_root / "results"
-    results_dir.mkdir(exist_ok=True)
+    # Redirect results paths to tmp so the project's real results/ stays clean
+    import run as run_mod
+    import report as report_mod
+    real_generate = report_mod.generate_report_from_file
 
-    # Write results.json so generate_report_from_file() can read it
-    results_json_path = results_dir / "results.json"
+    results_json_path = tmp_path / "results.json"
     results_json_path.write_text(json.dumps(results), encoding="utf-8")
+    report_path = tmp_path / "results.md"
+
+    monkeypatch.setattr(run_mod, "_RESULTS_PATH", results_json_path)
+    monkeypatch.setattr(run_mod, "_RESULTS_DIR", tmp_path)
+    monkeypatch.setattr(
+        report_mod,
+        "generate_report_from_file",
+        lambda: real_generate(results_path=str(results_json_path), output_path=str(report_path)),
+    )
 
     with patch("run.run_benchmark", return_value=results):
         monkeypatch.setattr(sys, "argv", ["run.py", "--report", "--config", str(config_path)])
@@ -539,8 +542,6 @@ def test_report_flag_content_sections(monkeypatch, tmp_path):
         from run import main
         main()
 
-    # Read the generated report
-    report_path = project_root / "results" / "results.md"
     assert report_path.exists(), "results.md not created"
     content = report_path.read_text(encoding="utf-8")
 
@@ -561,10 +562,6 @@ def test_report_flag_content_sections(monkeypatch, tmp_path):
     # Verify: all task types appear in Task Breakdown
     for tt in ("code", "qa", "reasoning"):
         assert tt in content, f"Task type '{tt}' not found in report"
-
-    # Clean up the generated report and results.json
-    report_path.unlink(missing_ok=True)
-    results_json_path.unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -598,11 +595,15 @@ def test_no_report_flag_no_file(monkeypatch, tmp_path):
     results_path = tmp_path / "results.json"
     results_path.write_text(json.dumps(results), encoding="utf-8")
 
-    # Remove any existing results.md before the test
-    project_root = StdPath(__file__).resolve().parent.parent
-    existing_report = project_root / "results" / "results.md"
-    if existing_report.exists():
-        existing_report.unlink()
+    # Redirect results paths to tmp so the project's real results/ stays clean
+    import run as run_mod
+
+    results_json_path = tmp_path / "results.json"
+    results_json_path.write_text(json.dumps(results), encoding="utf-8")
+    report_path = tmp_path / "results.md"
+
+    monkeypatch.setattr(run_mod, "_RESULTS_PATH", results_json_path)
+    monkeypatch.setattr(run_mod, "_RESULTS_DIR", tmp_path)
 
     # Mock run_benchmark and run main() WITHOUT --report flag
     with patch("run.run_benchmark", return_value=results):
@@ -612,11 +613,8 @@ def test_no_report_flag_no_file(monkeypatch, tmp_path):
         from run import main
         main()
 
-    # Verify: results.md should NOT be created
-    report_path = project_root / "results" / "results.md"
-    assert not report_path.exists(), (
-        "results.md was created even without --report flag"
-    )
+    # Verify: no report was generated
+    assert not report_path.exists(), "results.md was created even without --report flag"
 
 
 # ---------------------------------------------------------------------------

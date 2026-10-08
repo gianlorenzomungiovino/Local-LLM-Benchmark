@@ -11,6 +11,10 @@ from runner import _build_run_stamp
 
 _PROJECT_ROOT = Path(__file__).resolve().parent
 
+# Results history location (module-level so tests can redirect it)
+_RESULTS_DIR = _PROJECT_ROOT / "results"
+_RESULTS_PATH = _RESULTS_DIR / "results.json"
+
 
 def _print_banner(
     task_count: int,
@@ -80,9 +84,6 @@ def main() -> None:
     with open(config_path, "r", encoding="utf-8") as f:
         api_config = json.load(f)
     run_stamp = _build_run_stamp(api_config)
-
-    _RESULTS_DIR = _PROJECT_ROOT / "results"
-    _RESULTS_PATH = _RESULTS_DIR / "results.json"
 
     # Append the run stamp to original_configs (history bookkeeping).
     existing = None

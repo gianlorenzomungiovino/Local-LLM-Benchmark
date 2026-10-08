@@ -47,7 +47,7 @@ def generate_report(
     results: list[dict[str, Any]],
     configs: list[dict[str, Any]] | dict[str, Any] | None = None,
     original_configs: list[dict[str, Any]] | None = None,
-    output_path: str = "results/results.md",
+    output_path: str | None = None,
 ) -> str:
     """Generate a human-readable markdown report from benchmark results.
 
@@ -273,9 +273,10 @@ def generate_report(
 
     markdown = "\n".join(lines)
 
-    out = Path(output_path)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(markdown, encoding="utf-8")
+    if output_path is not None:
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(markdown, encoding="utf-8")
 
     return markdown
 
