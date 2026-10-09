@@ -160,10 +160,19 @@ def generate_report(
                 lines.append("#### Configuration\n")
                 lines.append("| Parameter | Value |")
                 lines.append("|-----------|-------|")
+                nested: dict[str, Any] = {}
                 for key, value in run_config.items():
-                    display_value = _format_config_value(value)
-                    lines.append(f"| {key} | `{display_value}` |")
+                    if isinstance(value, (dict, list)):
+                        nested[key] = value  # rendered verbatim below, not in the table
+                        continue
+                    lines.append(f"| {key} | `{_format_config_value(value)}` |")
                 lines.append("")
+                if nested:
+                    lines.append("##### Launch parameters (verbatim, from the stamped recipe)\n")
+                    lines.append("```json")
+                    lines.append(json.dumps(nested, indent=2, ensure_ascii=False))
+                    lines.append("```")
+                    lines.append("")
 
             # Per-Run Task Breakdown
             lines.append("#### Task Breakdown\n")
