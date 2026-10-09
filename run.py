@@ -93,7 +93,7 @@ def main() -> None:
         "--report",
         action="store_true",
         default=False,
-        help="Generate markdown report after benchmark run",
+        help="Record this run in results/results.json and generate results/results.md",
     )
     args = parser.parse_args()
 
@@ -111,22 +111,25 @@ def main() -> None:
         api_config = json.load(f)
     run_stamp = _build_run_stamp(api_config)
 
-    # Append the run stamp to original_configs (history bookkeeping).
-    existing = None
-    if _RESULTS_PATH.exists():
-        with open(_RESULTS_PATH, "r", encoding="utf-8") as f:
-            existing = json.load(f)
-    if isinstance(existing, dict):
-        existing_originals = existing.get("original_configs", [])
-        existing_originals.append(run_stamp)
-        existing["original_configs"] = existing_originals
-    else:
-        # Old format: convert to new format, preserving results
-        old_results = existing if isinstance(existing, list) else []
-        existing = {"results": old_results, "original_configs": [run_stamp]}
-    _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    with open(_RESULTS_PATH, "w", encoding="utf-8") as f:
-        json.dump(existing, f, indent=2, ensure_ascii=False)
+    # Record the run stamp in original_configs (history bookkeeping).
+    # Only runs launched with --report are kept: runs without it are
+    # throwaway tests and must not pollute the history.
+    if args.report:
+        existing = None
+        if _RESULTS_PATH.exists():
+            with open(_RESULTS_PATH, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+        if isinstance(existing, dict):
+            existing_originals = existing.get("original_configs", [])
+            existing_originals.append(run_stamp)
+            existing["original_configs"] = existing_originals
+        else:
+            # Old format: convert to new format, preserving results
+            old_results = existing if isinstance(existing, list) else []
+            existing = {"results": old_results, "original_configs": [run_stamp]}
+        _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(_RESULTS_PATH, "w", encoding="utf-8") as f:
+            json.dump(existing, f, indent=2, ensure_ascii=False)
 
     # Load tasks to count them
     tasks_path = _PROJECT_ROOT / "tasks" / "tasks.json"
@@ -138,6 +141,8 @@ def main() -> None:
 
     # Print startup banner
     _print_banner(task_count, run_stamp, config_path, args.limit)
+    if not args.report:
+        print("  NOTE: this run is NOT recorded in results/ (pass --report to keep it)", file=sys.stderr)
 
     # Warn (never re-configure) if the served model id disagrees with the config
     _warn_served_model_mismatch(api_config)
@@ -145,6 +150,7 @@ def main() -> None:
     results = run_benchmark(
         config_path=config_path,
         limit=args.limit,
+        record=args.report,
     )
 
     print(f"\nCompleted {len(results)} tasks.", file=sys.stderr)

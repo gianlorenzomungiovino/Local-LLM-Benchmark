@@ -150,15 +150,17 @@ def _build_run_stamp(api_config: dict) -> dict:
     return stamp
 
 
-def run_benchmark(config_path: str = "configs/models.json", limit: int | None = None) -> list[dict]:
+def run_benchmark(config_path: str = "configs/models.json", limit: int | None = None, record: bool = True) -> list[dict]:
     """Run all (or *limit*) benchmark tasks against the server and return results.
 
     Args:
         config_path: Path to models.json (baseUrl + model + per-run choices).
         limit: If set, run only the first N tasks (for debugging).
+        record: When False, do not write anything to results/results.json
+                (throwaway runs are not kept in the history).
 
     Returns:
-        List of result dicts written to results/results.json.
+        List of result dicts (written to results/results.json when record=True).
     """
     # Load API configuration (never rewritten at runtime)
     config = _load_config(config_path)
@@ -182,7 +184,7 @@ def run_benchmark(config_path: str = "configs/models.json", limit: int | None = 
     previous_results: list[dict] = []
     previous_configs: list[dict] = []
     original_configs: list[dict] = []
-    if _RESULTS_PATH.exists() and _RESULTS_PATH.stat().st_size > 0:
+    if record and _RESULTS_PATH.exists() and _RESULTS_PATH.stat().st_size > 0:
         with open(_RESULTS_PATH, "r", encoding="utf-8") as f:
             content = f.read().strip()
             if content:
@@ -256,7 +258,8 @@ def run_benchmark(config_path: str = "configs/models.json", limit: int | None = 
                     })
                 # Incremental save: persist after each task so an
                 # interruption (Ctrl+C, crash) never loses completed work.
-                _save_partial_results(
+                if record:
+                    _save_partial_results(
                     previous_results + results,
                     original_configs,
                     previous_configs + [run_stamp],
@@ -290,7 +293,8 @@ def run_benchmark(config_path: str = "configs/models.json", limit: int | None = 
     all_configs = previous_configs + [run_stamp]
 
     # Final write (with scores) — overwrites the incremental saves
-    _save_partial_results(all_results, original_configs, all_configs)
+    if record:
+        _save_partial_results(all_results, original_configs, all_configs)
 
     return all_results
 

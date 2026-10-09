@@ -121,10 +121,10 @@ python run.py [--config configs/models.json] [--limit N] [--report]
 
 | Flag              | Meaning                                                            |
 | ----------------- | ------------------------------------------------------------------ |
-| _(no flags)_      | Run all tasks against the server declared in `configs/models.json` |
+| _(no flags)_      | Run all tasks — **throwaway run, nothing is saved** |
 | `--config <path>` | Use a different API config file (default: `configs/models.json`)   |
 | `--limit <N>`     | Run only the first N tasks (debugging)                             |
-| `--report`        | Also generate `results/results.md` (rankings + per-run provenance) |
+| `--report`        | Record this run in `results/results.json` (history) and generate `results/results.md` |
 
 > There is no `--server` flag anymore: the API URL, port, model and reasoning level all live in `configs/models.json`, one file to edit per configuration you test.
 
@@ -156,7 +156,7 @@ python run.py --config configs/models-gpu.json --report
 
 - **stderr**: banner, progress `[N/29] type:id → Xs, Y chars, score:Z`, summary
 - **logs/client.log**: structured request/response logging (zero console output)
-- **results/results.json**: all results, cumulative across runs
+- **results/results.json**: history of recorded runs only (runs launched with `--report`)
 - **results/results.md**: markdown report with rankings (with `--report`)
 
 ## Tasks
