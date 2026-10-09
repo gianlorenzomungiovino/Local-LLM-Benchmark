@@ -29,7 +29,6 @@ The tool **never starts the server**: you start it manually (with any engine), t
   "api": "openai-completions",
   "compat": { "supportsReasoningEffort": true },
   "thinking_level": "medium",
-  "reasoning_budget": 8192,
   "models": [
     {
       "id": "qwen3.8-flash-next-coder-iq1_m",
@@ -39,8 +38,13 @@ The tool **never starts the server**: you start it manually (with any engine), t
       "contextWindow": 163840,
       "maxTokens": 16384,
       "thinkingLevelMap": {
-        "off": "none", "minimal": "low", "low": "low",
-        "medium": "medium", "high": "xhigh", "xhigh": "xhigh", "max": "xhigh"
+        "off": "none",
+        "minimal": "low",
+        "low": "low",
+        "medium": "medium",
+        "high": "xhigh",
+        "xhigh": "xhigh",
+        "max": "xhigh"
       }
     }
   ],
@@ -49,10 +53,15 @@ The tool **never starts the server**: you start it manually (with any engine), t
 ```
 
 - `baseUrl` — server URL **and port** (no hardcoded default anymore; accept `http://host:port` or `http://host:port/v1`)
-- `thinking_level` — resolved per request through the model's `thinkingLevelMap` into `reasoning_effort` (only if `compat.supportsReasoningEffort`)
-- `reasoning_budget` — sent as-is in the request
+- `thinking_level` — resolved per request through the model's `thinkingLevelMap` into `reasoning_effort` (only if `compat.supportsReasoningEffort`; a `null` for `"off"` in the map means "don't send"; when `off` maps to a string like `"none"`, that value is sent explicitly, like pi does)
 - `maxTokens` — worst-case generation cap, used for the adaptive deadline
 - `launch_config` — path to the **launch recipe** file, see below
+
+> **The model id in `models.json` is the only source of truth for the model name.**
+> Launch recipes are never parsed, so their `model` field (or equivalent flag) is decorative:
+> the stamp and results always carry `models.json`'s `models[0].id`. Update `models.json`
+> whenever you switch model/server — if the running server disagrees, `run.py` prints a
+> loud `WARNING` at startup (it never re-configures anything).
 
 ### Launch recipes (`configs/*.json`)
 
@@ -68,33 +77,33 @@ This benchmark works with **any server implementing the OpenAI-compatible API** 
 
 #### Desktop / Local-first
 
-| Engine | GitHub Stars | Notes |
-|--------|-------------|-------|
-| [**Ollama**](https://github.com/ollama/ollama) | 166k+ | Go, one-command setup, 100+ models via `ollama pull`. Default on `localhost:11434`. |
-| [**LM Studio**](https://lmstudio.ai) | — | Polished GUI, ships both llama.cpp and MLX engines. Server mode on `localhost:1234`. |
-| [**Jan**](https://github.com/janhq/jan) | 40k+ | Cross-platform desktop app with model library and built-in API server. |
-| [**GPT4All**](https://github.com/nomic-ai/gpt4all) | 20k+ | Beginner-friendly desktop app with local server mode. |
+| Engine                                             | GitHub Stars | Notes                                                                                |
+| -------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------ |
+| [**Ollama**](https://github.com/ollama/ollama)     | 166k+        | Go, one-command setup, 100+ models via `ollama pull`. Default on `localhost:11434`.  |
+| [**LM Studio**](https://lmstudio.ai)               | —            | Polished GUI, ships both llama.cpp and MLX engines. Server mode on `localhost:1234`. |
+| [**Jan**](https://github.com/janhq/jan)            | 40k+         | Cross-platform desktop app with model library and built-in API server.               |
+| [**GPT4All**](https://github.com/nomic-ai/gpt4all) | 20k+         | Beginner-friendly desktop app with local server mode.                                |
 
 #### CLI / Server-grade
 
-| Engine | GitHub Stars | Notes |
-|--------|-------------|-------|
-| [**llama.cpp**](https://github.com/ggerganov/llama.cpp) (`llama-server`) | 70k+ | Foundational C/C++ engine. GGUF native. Full sampling param support (`top_k`, `mirostat`, `typical_p`, `tfs_z`, etc.). |
-| [**vLLM**](https://github.com/vllm-project/vllm) | 30k+ | Production-grade, PagedAttention, highest throughput. Best for serving large models on GPUs. |
-| [**SGLang**](https://github.com/sgl-project/sglang) | 10k+ | Rising star. Outperforms vLLM on chat workloads and structured output. OpenAI-compatible API. |
-| [**text-generation-webui**](https://github.com/oobabooga/text-generation-webui) (oobabooga) | 40k+ | Flexible multi-backend (Transformers, llama.cpp, ExLlamaV2, etc.). Rich extensions ecosystem. |
-| [**LocalAI**](https://github.com/mudler/LocalAI) | 20k+ | Drop-in OpenAI API replacement. Multi-backend (llama.cpp, vLLM, transformers, MLX). Supports text, images, audio. |
-| [**mistral.rs**](https://github.com/EricLBuehler/mistral.rs) | 5k+ | Rust-based, blazing fast. OpenAI-compatible with core sampling params. |
-| [**Xinference**](https://github.com/xorbitsai/inference) | 8k+ | Multi-engine backend with REST API. Supports llama.cpp, vLLM, Transformers, and more. |
-| [**Unsloth**](https://github.com/unslothai/unsloth) | 30k+ | Dynamic GGUF quantization, fast inference/training. OpenAI-compatible server. |
-| [**TGI**](https://github.com/huggingface/text-generation-inference) | 9k+ | Hugging Face's production server. Supports vLLM-like scheduling. Some params differ from OpenAI spec. |
+| Engine                                                                                      | GitHub Stars | Notes                                                                                                                  |
+| ------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| [**llama.cpp**](https://github.com/ggerganov/llama.cpp) (`llama-server`)                    | 70k+         | Foundational C/C++ engine. GGUF native. Full sampling param support (`top_k`, `mirostat`, `typical_p`, `tfs_z`, etc.). |
+| [**vLLM**](https://github.com/vllm-project/vllm)                                            | 30k+         | Production-grade, PagedAttention, highest throughput. Best for serving large models on GPUs.                           |
+| [**SGLang**](https://github.com/sgl-project/sglang)                                         | 10k+         | Rising star. Outperforms vLLM on chat workloads and structured output. OpenAI-compatible API.                          |
+| [**text-generation-webui**](https://github.com/oobabooga/text-generation-webui) (oobabooga) | 40k+         | Flexible multi-backend (Transformers, llama.cpp, ExLlamaV2, etc.). Rich extensions ecosystem.                          |
+| [**LocalAI**](https://github.com/mudler/LocalAI)                                            | 20k+         | Drop-in OpenAI API replacement. Multi-backend (llama.cpp, vLLM, transformers, MLX). Supports text, images, audio.      |
+| [**mistral.rs**](https://github.com/EricLBuehler/mistral.rs)                                | 5k+          | Rust-based, blazing fast. OpenAI-compatible with core sampling params.                                                 |
+| [**Xinference**](https://github.com/xorbitsai/inference)                                    | 8k+          | Multi-engine backend with REST API. Supports llama.cpp, vLLM, Transformers, and more.                                  |
+| [**Unsloth**](https://github.com/unslothai/unsloth)                                         | 30k+         | Dynamic GGUF quantization, fast inference/training. OpenAI-compatible server.                                          |
+| [**TGI**](https://github.com/huggingface/text-generation-inference)                         | 9k+          | Hugging Face's production server. Supports vLLM-like scheduling. Some params differ from OpenAI spec.                  |
 
 #### Proxy / Aggregation Layer
 
-| Engine | Notes |
-|--------|-------|
-| [**LiteLLM**](https://github.com/BerriAI/litellm) | Proxy unifying 100+ providers. Can front any of the above engines and expose a unified OpenAI-compatible API. |
-| [**Open WebUI**](https://github.com/open-webui/open-webui) | Chat interface (ChatGPT-like) that works with any of the engines above. |
+| Engine                                                     | Notes                                                                                                         |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| [**LiteLLM**](https://github.com/BerriAI/litellm)          | Proxy unifying 100+ providers. Can front any of the above engines and expose a unified OpenAI-compatible API. |
+| [**Open WebUI**](https://github.com/open-webui/open-webui) | Chat interface (ChatGPT-like) that works with any of the engines above.                                       |
 
 > **Tip:** Pick the engine that matches your hardware and workflow. For quick local testing: **Ollama** or **LM Studio**. For maximum parameter control: **llama.cpp**. For GPU throughput: **vLLM** or **SGLang**. All work with this benchmark — just set `baseUrl` in `configs/models.json` to the right URL.
 
@@ -102,7 +111,7 @@ This benchmark works with **any server implementing the OpenAI-compatible API** 
 
 The benchmark does **not** send sampling parameters — sampling belongs to the server, which you start with your own flags (recorded in the launch recipe). Per request the client sends only:
 
-`messages` (system + user), `stream: true`, `model` (id from `models.json`), and — when declared — `reasoning_effort` (resolved via `thinkingLevelMap`) and `reasoning_budget`.
+`messages` (system + user), `stream: true`, `model` (id from `models.json`), and — when declared — `reasoning_effort` (resolved via `thinkingLevelMap`, following pi's exact resolution flow). The reasoning budget is likewise a launch flag (visible in the stamped recipe), not a request parameter.
 
 ### CLI usage
 
@@ -110,12 +119,12 @@ The benchmark does **not** send sampling parameters — sampling belongs to the 
 python run.py [--config configs/models.json] [--limit N] [--report]
 ```
 
-| Flag | Meaning |
-|------|---------|
-| *(no flags)* | Run all tasks against the server declared in `configs/models.json` |
-| `--config <path>` | Use a different API config file (default: `configs/models.json`) |
-| `--limit <N>` | Run only the first N tasks (debugging) |
-| `--report` | Also generate `results/results.md` (rankings + per-run provenance) |
+| Flag              | Meaning                                                            |
+| ----------------- | ------------------------------------------------------------------ |
+| _(no flags)_      | Run all tasks against the server declared in `configs/models.json` |
+| `--config <path>` | Use a different API config file (default: `configs/models.json`)   |
+| `--limit <N>`     | Run only the first N tasks (debugging)                             |
+| `--report`        | Also generate `results/results.md` (rankings + per-run provenance) |
 
 > There is no `--server` flag anymore: the API URL, port, model and reasoning level all live in `configs/models.json`, one file to edit per configuration you test.
 

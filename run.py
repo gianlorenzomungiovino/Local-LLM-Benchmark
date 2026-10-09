@@ -47,6 +47,32 @@ def _print_banner(
     print(sep + "\n", file=sys.stderr)
 
 
+def _warn_served_model_mismatch(api_config: dict) -> None:
+    """Sanity warning only — the configured models.json id stays the truth.
+
+    If the server answers GET /v1/models and none of the served ids matches
+    the configured model, print a loud warning so a mislabeled run is caught
+    immediately (this happens when models.json was not updated along with the
+    launch recipe). Never re-configures anything.
+    """
+    try:
+        import httpx
+        base = api_config["baseUrl"].rstrip("/")
+        if base.endswith("/v1"):
+            base = base[:-3]
+        resp = httpx.get(base + "/v1/models", timeout=5.0)
+        served = {m.get("id") for m in resp.json().get("data", []) if m.get("id")}
+        configured = (api_config.get("models") or [{}])[0].get("id")
+        if served and configured not in served:
+            print(
+                f"  WARNING: server serves {sorted(served)}; configured model is "
+                f"{configured!r} — update configs/models.json before trusting this run.",
+                file=sys.stderr,
+            )
+    except Exception:
+        pass  # server unreachable or endpoint missing: stay silent
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run the LLM benchmark against a local OpenAI-compatible server.",
@@ -112,6 +138,9 @@ def main() -> None:
 
     # Print startup banner
     _print_banner(task_count, run_stamp, config_path, args.limit)
+
+    # Warn (never re-configure) if the served model id disagrees with the config
+    _warn_served_model_mismatch(api_config)
 
     results = run_benchmark(
         config_path=config_path,

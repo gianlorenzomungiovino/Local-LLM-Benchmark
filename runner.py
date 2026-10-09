@@ -16,6 +16,7 @@ from llm_client import (
     OutputOverflow,
     StallTimeout,
     TaskDeadlineExceeded,
+    _resolve_reasoning_effort,
 )
 from evaluator import score_results
 
@@ -136,16 +137,13 @@ def _build_run_stamp(api_config: dict) -> dict:
     """
     model = api_config["models"][0]
     level = api_config.get("thinking_level")
-    effort = None
-    if api_config.get("compat", {}).get("supportsReasoningEffort"):
-        effort = (model.get("thinkingLevelMap") or {}).get(level)
+    effort = _resolve_reasoning_effort(api_config)
     stamp = dict(_load_launch_recipe(api_config))
     stamp.update({
         "model": model.get("id"),
         "baseUrl": api_config["baseUrl"],
         "thinking_level": level,
         "reasoning_effort": effort,
-        "reasoning_budget": api_config.get("reasoning_budget"),
         "n_ctx": model.get("contextWindow"),
         "max_tokens": model.get("maxTokens"),
     })

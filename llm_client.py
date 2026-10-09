@@ -34,12 +34,34 @@ class TaskDeadlineExceeded(RuntimeError):
     """Task exceeded its adaptive per-task deadline."""
 
 
+def _resolve_reasoning_effort(api_config: dict) -> str | None:
+    """Resolve the reasoning_effort value to send for this run (pi-style).
+
+    Mirrors pi's openai-completions buildParams(): gated on model.reasoning
+    and compat.supportsReasoningEffort. For a non-"off" level: thinkingLevelMap[level],
+    falling back to the raw level when the map has no entry. For off/unset:
+    thinkingLevelMap["off"] only when it is a string (null means "don't send").
+    """
+    model = (api_config.get("models") or [{}])[0]
+    if not model.get("reasoning", False):
+        return None
+    if not api_config.get("compat", {}).get("supportsReasoningEffort"):
+        return None
+    level = api_config.get("thinking_level")
+    tmap = model.get("thinkingLevelMap") or {}
+    if level and level != "off":
+        value = tmap.get(level, level)
+        return value if isinstance(value, str) else None
+    off_value = tmap.get("off")
+    return off_value if isinstance(off_value, str) else None
+
+
 class LLMClient:
     """Async-compatible HTTP client for an OpenAI-compatible local server.
 
     Configured from configs/models.json (see that file for the schema):
     baseUrl, model id, capability metadata and the per-run choices
-    (thinking_level, reasoning_budget). Sampling parameters are NOT sent here —
+    (thinking_level). Sampling and reasoning-budget parameters are NOT sent here —
     the server is started manually by the user with its own flags.
     """
 
@@ -62,12 +84,12 @@ class LLMClient:
         self.api_config = api_config
         self.compat = api_config.get("compat", {}) or {}
         self.thinking_level = api_config.get("thinking_level")
-        self.reasoning_budget = api_config.get("reasoning_budget")
         models = api_config.get("models") or []
         if not models:
             raise ValueError("api_config requires at least one model entry")
         model = models[0]
         self.model_id = model.get("id")
+        self.model_reasoning = bool(model.get("reasoning", False))
         self.thinking_map = model.get("thinkingLevelMap", {}) or {}
         # Guardrails for the adaptive deadline (maxTokens = worst-case n_predict)
         self.max_tokens = model.get("maxTokens")
@@ -116,7 +138,7 @@ class LLMClient:
             try:
                 async with self._client.stream(
                     "POST",
-                    f"{self.base_url}/v1/chat/completions",
+                    f"{self.base_url}/chat/completions",
                     json=payload,
                 ) as response:
                     # Handle 5xx / rate-limit with retry
@@ -179,15 +201,11 @@ class LLMClient:
 
         payload["model"] = self.model_id
 
-        # Reasoning params: thinking_level resolved through the model's
-        # thinkingLevelMap, plus reasoning_budget. Sampling stays server-side
-        # (the user starts the server with its own flags).
-        if self.thinking_level and self.compat.get("supportsReasoningEffort"):
-            effort = self.thinking_map.get(self.thinking_level)
-            if effort:
-                payload["reasoning_effort"] = effort
-        if self.reasoning_budget is not None:
-            payload["reasoning_budget"] = self.reasoning_budget
+        # Reasoning params — mirrors pi's openai-completions buildParams().
+        # The reasoning budget is NOT sent: it is set at server launch (recipe).
+        effort = _resolve_reasoning_effort(self.api_config)
+        if effort is not None:
+            payload["reasoning_effort"] = effort
 
         return payload
 
